@@ -10,13 +10,16 @@ import meteostat
 from tqdm import tqdm
 import logging
 from time import sleep
+from tenacity import retry, wait_exponential, stop_after_attempt
 
-#add sys path for import
-sys.path.append('/home/kieran/Documents/Datasets/Global streetscapes/global-streetscapes/code/raw_download')
+#import files from global streetscapes
 from raw_download import download_pts_csv
 
 logger = logging.getLogger(__name__)
 
+class NoWeatherStation(Exception):
+    'Custom exception raised when meteostat cannot find a weather station'
+    pass
 
 def hotDayFinder(city_ascii,city_lat,city_lon,df_streetscapes):
     flag = 0
@@ -56,18 +59,24 @@ def hotDayCity(city_lat,city_lon): #find the hot days in a specific city?
     start = datetime(2018,1,1) #TODO: Make arbitrary (for all time?)
     end = datetime(2025,1,1)
     
-
+    print(type(city_lat))
+    print(type(city_lon))
+    print(type(start))
+    print(type(end))
+    print((city_lat))
+    print((city_lon))
+    print((start))
+    print((end))
     city_point = meteostat.Point(city_lat,city_lon,0) #altitude of 0 since idk
-    city_point.alt_range = 2000#2km altitude range to be generous
-    city_point.radius = 1000 #in m
+    city_point.alt_range = 2000#2km altitude range for weather stations to be generous
+    city_point.radius = 35000 #in m. Radius for allowed weather stations
     
-    sleep(5)
-    data = meteostat.Daily(city_point,start,end)
-    # try:
-    #     data = meteostat.Daily(city_point,start,end) #TODO: fix whatever is going on here?
-    # except:
-    #     logger.info('No weather stations in range/temp data failed')
-    #     return 0
+    #data = meteostat.Daily(city_point,start,end)
+    try:
+         data = meteostat.Daily(city_point,start,end) #TODO: fix whatever is going on here?
+    except:
+         logger.info('No weather stations in range/temp data failed')
+         raise NoWeatherStation('No weather stations in range/temp data failed')
     data = data.fetch()
     #print(data)
     hot_days = hot_day_classifier(data)
@@ -77,10 +86,35 @@ def hotDayCity(city_lat,city_lon): #find the hot days in a specific city?
 
 def hot_day_classifier(temp_data_daily):
     hot_days = temp_data_daily[temp_data_daily['tmax'] >= 30]
+    #hot_days = temp_data_daily
     if len(hot_days) <1:
         return 0
     #else
     return hot_days
+
+def group_consecutive_days(dates): #code courtesy of GPT 5
+    # Sort dates and remove duplicates
+    dates = sorted(set(dates))
+
+    sequences = []
+    if not dates:
+        return sequences
+
+    start = dates[0]
+    prev = dates[0]
+
+    for current in dates[1:]:
+        if current - prev == timedelta(days=1):
+            # Still consecutive
+            prev = current
+        else:
+            # Sequence ended
+            sequences.append((start, prev))
+            start = current
+            prev = current
+    sequences.append((start, prev))
+
+    return sequences
 
 #TODO: Finish this implementation 
 def mapillary_download_hot_days(city,hot_days,save_dir):
@@ -93,16 +127,31 @@ def mapillary_download_hot_days(city,hot_days,save_dir):
     print('hot days')
     #print(hot_days)
     #print(hot_date_list)
-    for date in hot_date_list:#TODO: Having each download point to the same location may not work. Ideally CSVs for each city would append?
-        start_date = date 
-        end_date = date + timedelta(days = 1) #add a day after to allow for images to be collected
+
+    #refactoring to intelligently (ish) pick out start and end dates from unsorted list of hot dates
+
+    sequences = group_consecutive_days(hot_date_list)
+
+    for i in range(0,len(sequences)):
+        start_date,end_date = sequences[i]
         #convert datetimes into strings to make compatible with mapillary API (take strings in YYYY-MM-DD, not datetime)
         start_date = start_date.strftime("%Y-%m-%d")
         end_date = end_date.strftime("%Y-%m-%d")
-
         print(start_date)
         print(end_date)
         download_pts_csv(city,save_dir,start_date,end_date,zoom = 14) # other zoom levels are not supported by Mapillary SDK (according to NUS fxn)
+
+
+    # for date in hot_date_list:#TODO: Having each download point to the same location may not work. Ideally CSVs for each city would append?
+    #     start_date = date 
+    #     end_date = date + timedelta(days = 1) #add a day after to allow for images to be collected
+    #     #convert datetimes into strings to make compatible with mapillary API (take strings in YYYY-MM-DD, not datetime)
+    #     start_date = start_date.strftime("%Y-%m-%d")
+    #     end_date = end_date.strftime("%Y-%m-%d")
+
+    #     print(start_date)
+    #     print(end_date)
+    #     download_pts_csv(city,save_dir,start_date,end_date,zoom = 14) # other zoom levels are not supported by Mapillary SDK (according to NUS fxn)
 
 
 
@@ -115,7 +164,7 @@ def main():
     df_world_cities = df_world_cities.dropna(subset=['city_ascii','lat','lng'])#drop where any value is NaN
     #logger.info('Obtained cities')
     city_id_list = df_world_cities['id']
-
+    #city_id_list = city_id_list[1:] #manually index to check errors. Tokyo is first one
     for city in tqdm(city_id_list): 
         
         city = df_world_cities[df_world_cities['id']==city].iloc[0] #change to city as df
@@ -123,16 +172,22 @@ def main():
         #print(city_data)
         city_lat = city['lat']
         city_lon = city['lng']
-        
-        city_hot_days = hotDayCity(city_lat,city_lon)
-        
+        city_name = city['city_ascii']
+        print(city_name)
+        try:
+            city_hot_days = hotDayCity(city_lat,city_lon)
+            save_dir = os.path.join('/home/kieran/Documents/Python/sunny_day_SVI/city_data',city['city_ascii'])#0 to un
+            #make directory to save stuff
+            os.makedirs(save_dir,exist_ok=True)
+            #print('hot days length')
+            #print(len(city_hot_days))
+            mapillary_download_hot_days(city,city_hot_days,save_dir)
+        except NoWeatherStation:
+            logger.info(f'{city_name} had no weather stations ')
+
+            pass #don't do anything
         #print(city_data['city_ascii'].iloc[0])
-        save_dir = os.path.join('/home/kieran/Documents/Datasets/Global streetscapes/global-streetscapes/code/raw_download/city_testing_tmux',city['city_ascii'])#0 to un
-        #make directory to save stuff
-        os.makedirs(save_dir,exist_ok=True)
-        #print('hot days length')
-        #print(len(city_hot_days))
-        mapillary_download_hot_days(city,city_hot_days,save_dir)
+        
     
 
 
