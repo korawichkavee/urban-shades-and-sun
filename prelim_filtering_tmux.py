@@ -11,6 +11,7 @@ from tqdm import tqdm
 import logging
 from time import sleep
 from tenacity import retry, wait_exponential, stop_after_attempt
+import download_mly_points
 
 #import files from global streetscapes
 from raw_download import download_pts_csv
@@ -19,6 +20,10 @@ logger = logging.getLogger(__name__)
 
 class NoWeatherStation(Exception):
     'Custom exception raised when meteostat cannot find a weather station'
+    pass
+
+class NoHotDays(Exception):
+    'Custom exception raised when there are no hot days from a given loc'
     pass
 
 def hotDayFinder(city_ascii,city_lat,city_lon,df_streetscapes):
@@ -88,7 +93,7 @@ def hot_day_classifier(temp_data_daily):
     hot_days = temp_data_daily[temp_data_daily['tmax'] >= 30]
     #hot_days = temp_data_daily
     if len(hot_days) <1:
-        return 0
+        raise NoHotDays
     #else
     return hot_days
 
@@ -115,6 +120,20 @@ def group_consecutive_days(dates): #code courtesy of GPT 5
     sequences.append((start, prev))
 
     return sequences
+def save_csv(df, city, save_folder):
+    """
+    Save the merged dataframe into a csv.
+    """
+    try:
+        filename = city['city_ascii'].replace(
+            " ", "-") + '_' + str(city['id']) + '.csv'
+        dst_path = os.path.join(save_folder, filename)
+        df.to_csv(dst_path, index=False)
+        print('Downloaded SVI for',
+            city['city'], ':', len(df), 'points')
+        print(dst_path)
+    except AttributeError:
+        print('No images found from both sources')
 
 #TODO: Finish this implementation 
 def mapillary_download_hot_days(city,hot_days,save_dir):
@@ -131,7 +150,7 @@ def mapillary_download_hot_days(city,hot_days,save_dir):
     #refactoring to intelligently (ish) pick out start and end dates from unsorted list of hot dates
 
     sequences = group_consecutive_days(hot_date_list)
-
+    city_dfs = []
     for i in range(0,len(sequences)):
         start_date,end_date = sequences[i]
         #convert datetimes into strings to make compatible with mapillary API (take strings in YYYY-MM-DD, not datetime)
@@ -139,7 +158,12 @@ def mapillary_download_hot_days(city,hot_days,save_dir):
         end_date = end_date.strftime("%Y-%m-%d")
         print(start_date)
         print(end_date)
-        download_pts_csv(city,save_dir,start_date,end_date,zoom = 14) # other zoom levels are not supported by Mapillary SDK (according to NUS fxn)
+        mly_df = download_mly_points.get_mly_gdf(city, start_date, end_date)
+        city_dfs.append(mly_df)
+        #download_pts_csv(city,save_dir,start_date,end_date,zoom = 14) # other zoom levels are not supported by Mapillary SDK (according to NUS fxn)
+    #at the end, concatentate the data
+    city_df_full = pd.concat(city_dfs,axis = 0)
+    save_csv(city_df_full,city,save_dir) #note: this does not have exception catching capability right now
 
 
     # for date in hot_date_list:#TODO: Having each download point to the same location may not work. Ideally CSVs for each city would append?
@@ -156,6 +180,7 @@ def mapillary_download_hot_days(city,hot_days,save_dir):
 
 
 def main():
+
     #get list of cities:
     
     logging.basicConfig(filename='myapp.log', level=logging.INFO)
@@ -164,7 +189,7 @@ def main():
     df_world_cities = df_world_cities.dropna(subset=['city_ascii','lat','lng'])#drop where any value is NaN
     #logger.info('Obtained cities')
     city_id_list = df_world_cities['id']
-    #city_id_list = city_id_list[1:] #manually index to check errors. Tokyo is first one
+    city_id_list = city_id_list[40:] #manually index to check errors/save progress ish. Tokyo is first one
     for city in tqdm(city_id_list): 
         
         city = df_world_cities[df_world_cities['id']==city].iloc[0] #change to city as df
@@ -176,7 +201,7 @@ def main():
         print(city_name)
         try:
             city_hot_days = hotDayCity(city_lat,city_lon)
-            save_dir = os.path.join('/home/kieran/Documents/Python/sunny_day_SVI/city_data',city['city_ascii'])#0 to un
+            save_dir = os.path.join('/home/kieran/Documents/Python/sunny_day_SVI/mapillary_city_data',city['city_ascii'])#0 to un
             #make directory to save stuff
             os.makedirs(save_dir,exist_ok=True)
             #print('hot days length')
@@ -184,6 +209,9 @@ def main():
             mapillary_download_hot_days(city,city_hot_days,save_dir)
         except NoWeatherStation:
             logger.info(f'{city_name} had no weather stations ')
+        except NoHotDays:
+            print(f'{city_name} had no hot days ')
+            logger.info(f'{city_name} had no hot days ')
 
             pass #don't do anything
         #print(city_data['city_ascii'].iloc[0])

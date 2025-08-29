@@ -26,7 +26,7 @@ from pathlib import Path
 import uuid
 import mapillary.interface as mly
 import download_mly_points
-import download_kv_points
+#import download_kv_points
 access_token = 'MLY|9798203303595429|e2d4e749e96af419787ec1ca33019e3f'  # insert your access token here. access token can be registered on Mapillary for free.
 mly.set_access_token(access_token)
 
@@ -39,9 +39,10 @@ def download_df(city, zoom, start_date, end_date):
         mly_df = download_mly_points.get_mly_gdf(city, start_date, end_date)
         if mly_df.empty:
             print('No images from Mapillary')
-            kv_df = download_kv_points.download_kv_df(city, zoom, start_date, end_date)
+            #kv_df = download_kv_points.download_kv_df(city, zoom, start_date, end_date)
+            kv_df = pd.DataFrame()
             if kv_df.empty:
-                print('No images from KartaView')
+                print('Skip images from KartaView')
             else:
                 kv_df = kv_df.add_prefix('kv_')
                 kv_df['source'] = 'KartaView'
@@ -51,9 +52,10 @@ def download_df(city, zoom, start_date, end_date):
                     kv_df['uuid'] = kv_df.apply(lambda row: str(uuid.uuid4()), axis=1)
                 return kv_df
         else:
-            kv_df = download_kv_points.download_kv_df(city, zoom, start_date, end_date)
+            #kv_df = download_kv_points.download_kv_df(city, zoom, start_date, end_date)
+            kv_df = pd.DataFrame()
             if kv_df.empty:
-                print('No images from KartaView')
+                print('Skip images from KartaView')
                 mly_df = mly_df.drop(columns='geometry')
                 mly_df = mly_df.add_prefix('mly_')
                 mly_df['source'] = 'Mapillary'
@@ -129,7 +131,7 @@ if __name__ == '__main__':
 
     #load in data targets
     df_cities = pd.read_csv('/home/kieran/Documents/Python/SC-compare/city_town_mapping_copies/City_town_mapping_updated_long.csv')
-
+    
     #find list of unique cities to pull
     city_id_list = df_cities['city_id'].unique()
     city_id_list = city_id_list #first 100

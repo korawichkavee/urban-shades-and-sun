@@ -1,1 +1,3 @@
 *.jpeg
+/mapillary_city_data
+*.pt
