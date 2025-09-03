@@ -30,9 +30,19 @@ if __name__ == '__main__':
     #main()
     access_token = 'MLY|9798203303595429|e2d4e749e96af419787ec1ca33019e3f' # update your mapillary access token
     mly.set_access_token(access_token)
-    csv_path = '/home/kieran/Documents/Python/sunny_day_SVI/test_svi_download/Thu Duc/Thu-Duc_1704361621.csv'
-    out_dir = '/home/kieran/Documents/Python/sunny_day_SVI/test_svi_download/Thu Duc'
-    download_csv(csv_path,out_dir)
+    start_dir = '/home/kieran/Documents/Python/sunny_day_SVI/city7sample'
+    #start_dir = '/home/kieran/Documents/Python/sunny_day_SVI/city_data'
+    city_list = os.listdir(start_dir)
+    for city in city_list:
+        #find csv in path
+        csv_file = os.path.join(start_dir,city)
+        #print(csv_file)
+        city_name = city.split('_',1)[0]
+        img_output_dir = os.path.join(start_dir,city_name + 'img' )
+        #print(city_folder)
+        #print(img_output_dir)
+        
+        download_csv(csv_file,img_output_dir)
     #out_path = '/home/kieran/Documents/Python/sunny_day_SVI/test_svi_download/test1.png'
     #img_id = 412070930384924
     #img_id = 915410099191728

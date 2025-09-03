@@ -51,8 +51,10 @@ def get_mly_gdf(city, start_date, end_date):
     print(f'Downloading Mapillary data for {cityname}...')
     lon = city['lng']
     lat = city['lat']
+    print('test')
     try:
         data = mly.get_image_close_to(longitude=lon, latitude=lat)
+        
         dict_data = data.to_dict()
         gdf = gp.GeoDataFrame.from_features(dict_data)
         if not gdf.empty:
@@ -105,17 +107,20 @@ if __name__ == '__main__':
     # for each of your chosen cities, find its ID from data/worldcities.csv.
     # remember to check the country information to make sure it's the city you want, as different cities can share the same name, e.g. 'San Francisco'.
     # the below city ids correspond to 'Singapore', 'Stuttgart'.
-    targets = [1702341327, 1276171358] # please modify as needed
+    #targets = [1702341327, 1276171358] # please modify as needed
+    targets = [1724616994,1710680650,1792756324,1392419823,1702341327,1032717330,1356226629]
 
-    start_date = '2024-04-01' # start date to download data - please modify as needed (start_date=None indicates download from the earliest available image)
+    start_date = None # start date to download data - please modify as needed (start_date=None indicates download from the earliest available image)
     end_date = None # end date to download data - please modify as needed (end_date=None indicates download until the latest available image)
 
     # directory to save the downloaded data
-    save_folder = Path(__file__).parent / 'sample_output/mly' # please modify as needed
+    #save_folder = Path(__file__).parent / 'sample_output/mly' # please modify as needed
+    save_folder = '/home/kieran/Documents/Python/sunny_day_SVI/city7sample'
     Path(save_folder).mkdir(parents=True, exist_ok=True)
 
     # import the simplemaps worldcities database to get city centre for data download
-    wc = pd.read_csv(Path(__file__).parent / 'data/worldcities.csv') # please modify as needed
+    #wc = pd.read_csv(Path(__file__).parent / 'data/worldcities.csv') # please modify as needed
+    wc = pd.read_csv('/home/kieran/Documents/Datasets/Global streetscapes/global-streetscapes/code/raw_download/data/worldcities.csv')
 
     already_id = check_id(save_folder)
     total = len(targets)

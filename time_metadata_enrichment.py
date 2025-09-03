@@ -76,5 +76,20 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    #main()
+    starting_dir = '/home/kieran/Documents/Python/sunny_day_SVI/city7sample'
+    dirs = os.listdir(starting_dir)
+    for file in tqdm(dirs):
+        try:
+            
+            
+            csvfilepath = os.path.join(starting_dir,file)
+            city_df = append_local_time(csvfilepath)
+            city_df.to_csv(csvfilepath)
+            #df_temp = pd.read_csv(os.path.join(temp_dir,csvfile))
+            #city_dfs.append(df_temp)
+
+        except:
+            print('error')
+
     pass
