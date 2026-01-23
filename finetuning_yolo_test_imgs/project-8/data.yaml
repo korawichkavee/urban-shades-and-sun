@@ -1,8 +1,0 @@
-
-
-path: /home/kieran/Documents/Python/sunny_day_SVI/finetuning_yolo_test_imgs/project-8
-train: images/train
-val: images/val
-
-nc: 2
-names: ['person_no_shade','person_shade']
