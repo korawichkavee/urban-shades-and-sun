@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 
-MAX_WORKERS = 10  # Number of parallel API requests
+MAX_WORKERS = 20  # Number of parallel API requests
 
 
 def setup_logging():
