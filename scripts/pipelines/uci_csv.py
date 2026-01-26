@@ -1,3 +1,6 @@
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent / 'utils'))
 from quickhotpoint2 import get_utci_from_coords
 import pandas as pd
 

@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # ABOUTME: Add wind speed data to existing UTCI-enriched CSVs using cached ERA5 data
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent / 'utils'))
 from enhanced_utci import get_enhanced_utci_data
 import pandas as pd
 from pathlib import Path

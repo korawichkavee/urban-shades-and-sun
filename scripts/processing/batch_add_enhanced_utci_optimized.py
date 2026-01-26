@@ -1,6 +1,9 @@
 # ABOUTME: Optimized batch processor with multithreading and ETA calculation.
 # ABOUTME: Uses concurrent API calls and progress tracking for faster UTCI data collection.
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent / 'utils'))
 from enhanced_utci import get_enhanced_utci_data
 import pandas as pd
 from pathlib import Path
