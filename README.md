@@ -73,8 +73,6 @@ Cities with:
 ## Common Commands
 
 ```bash
-# Quick start
-cd /home/kieran/Documents/Python/sunny_day_SVI
 
 # Download new city
 python scripts/data_collection/download_hot_cities.py
