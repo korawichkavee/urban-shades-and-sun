@@ -173,6 +173,9 @@ def get_enhanced_utci_data(lat, lon, timestamp) -> Dict:
         'utci_K': math.nan,
         'utci_C': math.nan,
         'utci_timestamp': None,
+        'wind_speed_10m': math.nan,
+        'temperature_2m': math.nan,
+        'dewpoint_2m': math.nan,
         'prior_day_utci_avg_C': math.nan,
         'next_day_utci_avg_C': math.nan,
         'prior_day_rain': None,
@@ -205,6 +208,9 @@ def get_enhanced_utci_data(lat, lon, timestamp) -> Dict:
         utci_K, utci_C = _calculate_utci_from_met(Ta_C, Td_C, Va)
         result['utci_K'] = utci_K
         result['utci_C'] = utci_C
+        result['wind_speed_10m'] = Va
+        result['temperature_2m'] = Ta_C
+        result['dewpoint_2m'] = Td_C
 
     # Calculate daily averages and rain for prior/next days
     result['prior_day_utci_avg_C'] = _calculate_daily_average_utci(hourly, prior_date.isoformat())
