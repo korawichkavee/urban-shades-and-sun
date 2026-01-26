@@ -14,3 +14,4 @@
 *.gitignore
 *.pycdata/
 data/
+*.tar.gz

@@ -1,53 +1,238 @@
-# urban-shades-and-sun
+# Sunny Day SVI Documentation
 
+Complete documentation for the Sunny Day Street View Imagery (SVI) analysis project.
 
-#TODO:Implement shadow/person localization on a per-image basis
-ex: Are people in the shade or not in the shade?
-    Just standing in the sun or moving away from the sun?
-        Added classification (binary) -> use LLM?
-            Goals:
-                Num people in img
-                    Num people in the shade (potentially w/masking)
-                        vs num people in the sun
-                Side goal: are they moving or not?
+## Quick Links
 
-#TODO: Expand dataset size -> Go beyond NUS 688 cities? (Why we care: Want more data) (Kieran)
-How to do: look at NUS raw dowload code, create pipeline with lightweight annotation (specifically day)
-Pipeline
-    Raw download img manifests -> doesn't work (fully)
-        Obtain metadata about images -> doesn't work 
-            Compare datetime data against hot days
-                Could filter by pop in city? (ex: pop below 200k, exclude)
-    Check results for num images from some cities against NUS dataset?
-    Potential issue: global streetscapes spatial sampling is close to city center rather than across entire city
-        Method to change?
+- **[Getting Started](01_GETTING_STARTED.md)** - Project overview and setup
+- **[Data Collection](02_DATA_COLLECTION.md)** - Downloading SVI data
+- **[Processing](03_PROCESSING.md)** - Weather enrichment and UTCI
+- **[Machine Learning](04_MACHINE_LEARNING.md)** - YOLO and classification models
+- **[Visualization](05_VISUALIZATION.md)** - Generating plots and figures
+- **[Pipelines](06_PIPELINES.md)** - End-to-end workflows
+- **[Notebooks](07_NOTEBOOKS.md)** - Jupyter notebook guide
 
-Literally just check for mapillary images taken on the hot day during download step. 
+## Additional Resources
 
-#TODO: Come up with better measure for "hot" (selected 30C arbitrarily, could note localized measures? (ex: person in Russia may be more sensitive to heat than a person in Indonesia)) -> Lit review ish task
+- **[Project Structure](../PROJECT_STRUCTURE.md)** - Directory organization
+- **[Weather Processing](WEATHER_PROCESSING_README.md)** - Overnight processing guide
+- **[Forecast Data Note](FORECAST_DATA_NOTE.md)** - Historical forecast data (future work)
+- **[Agent Instructions](AGENTS.md)** - Guidelines for AI assistant collaboration
 
-#TODO: More specialized measure/filtering? (ex: also add a filter from 10am-2pm so only when the sun is out)
+## Documentation Map
 
-#TODO: Get additional context about the environment around the image? -> 
-    ex: mixed use streets? Is there shade in surrounding streets?
+### By Task
 
-#TODO: Put a rough draft of stuf into intro section of overleaf (korawich to copy paste/repurpose stuff from other paper?)
+| Task | Documents |
+|------|-----------|
+| I want to get started | [Getting Started](01_GETTING_STARTED.md) |
+| I want to download new cities | [Data Collection](02_DATA_COLLECTION.md) |
+| I want to add weather/UTCI data | [Processing](03_PROCESSING.md) |
+| I want to train ML models | [Machine Learning](04_MACHINE_LEARNING.md) |
+| I want to make plots | [Visualization](05_VISUALIZATION.md) |
+| I want to run the full pipeline | [Pipelines](06_PIPELINES.md) |
+| I want to do exploratory analysis | [Notebooks](07_NOTEBOOKS.md) |
 
-#TODO: How can we/can we? account for potential sampling bias (ex: people less likely to take mapillary images on very hot days)
-    Filip paper?
-    Do temp analysis of NUS dataset? 
+## Key Concepts
 
+### UTCI (Universal Thermal Climate Index)
+Comprehensive thermal comfort measure that accounts for:
+- Air temperature
+- Humidity
+- Wind speed
+- Solar radiation
 
-#TODO: (potential option)
-    Estimating the heat from the sun on individual people
+More accurate than simple temperature for understanding heat stress.
 
+### Shade-Seeking Behavior
+Measured as the ratio of people in shade to total people detected in an image. Analyzed against temperature to understand behavioral responses to heat.
 
-#TODO: Control example (imgs from regular temp days)
+### Hot Cities Dataset
+Cities with:
+- ≥10 days with temperature >30°C
+- Population >200,000
+- Sufficient Mapillary coverage
 
+### Processing Pipeline
+1. **Download** → Raw SVI metadata
+2. **Filter** → Hot days, walkable streets
+3. **Enrich** → Weather data, UTCI
+4. **Classify** → Sunny vs cloudy (ML)
+5. **Detect** → People and shadows (YOLO)
+6. **Analyze** → Shade ratios, statistics
+7. **Visualize** → Plots and figures
 
-#TODO:Scale size of shadow boundary by size of person (num pixels)
+## Project Statistics
 
-#TODO: Compute shadow angle as defense for stuff?
+- **Cities Analyzed**: 20+
+- **Total Images**: ~234,000
+- **Temperature Measures**: 3 (wet bulb, dry bulb, UTCI)
+- **ML Models**: 2 (binary classifier, YOLO detector)
+- **Visualizations**: 19 publication-ready plots
 
-#TODO: 10 cities per continent as a test?
+## Common Commands
 
+```bash
+# Quick start
+cd /home/kieran/Documents/Python/sunny_day_SVI
+
+# Download new city
+python scripts/data_collection/download_hot_cities.py
+
+# Add UTCI (recommended: optimized version)
+python batch_add_enhanced_utci_optimized.py
+
+# Run full pipeline
+python scripts/pipelines/hot_cities_full_pipeline.py
+
+# Generate visualizations
+python scripts/visualization/visualize_shade_ratios.py
+
+# Start Jupyter for exploration
+jupyter lab
+```
+
+## File Locations
+
+### Input Data
+- Raw downloads: `data/raw/`
+- City metadata: `docs/hot_cities.txt`
+
+### Output Data
+- Processed CSVs: `data/processed/city_estimate_outcomes/`
+- Plots: `outputs/plots/`
+- Models: `outputs/models/`
+- Logs: `logs/`
+
+### Code
+- Scripts: `scripts/` (organized by function)
+- Active development: Root directory (UTCI scripts)
+- Notebooks: `notebooks/`
+- Tests: `tests/`
+- Deployment: `deployment/`
+
+## Data Flow
+
+```
+Raw SVI
+    ↓ (download_hot_cities.py)
+Metadata CSVs
+    ↓ (prelim_filtering_tmux.py)
+Filtered Data
+    ↓ (batch_add_enhanced_utci_optimized.py)
+Data + UTCI
+    ↓ (hot_cities_full_pipeline.py)
+Data + UTCI + ML Annotations
+    ↓ (visualize_shade_ratios.py)
+Publication Figures
+```
+
+## Technology Stack
+
+### Core Libraries
+- **pandas**: Data manipulation
+- **geopandas**: Geographic data
+- **numpy**: Numerical operations
+- **matplotlib/seaborn**: Visualization
+
+### APIs and Data
+- **Mapillary**: Street view imagery
+- **Open-Meteo ERA5**: Historical weather data
+- **Meteostat**: Weather station data
+- **OSMnx**: OpenStreetMap integration
+
+### Machine Learning
+- **PyTorch**: Deep learning framework
+- **Ultralytics YOLO**: Object detection
+- **transformers**: Vision Transformer
+- **thermofeel**: UTCI calculations
+
+### Processing
+- **tmux**: Long-running jobs
+- **multiprocessing**: Parallel processing
+- **requests**: API calls with retry logic
+
+## Troubleshooting
+
+### Common Issues
+
+**"API rate limit exceeded"**
+- See [Processing Guide](03_PROCESSING.md) for retry logic
+- Add delays between requests
+- Use caching to reduce API calls
+
+**"Out of memory"**
+- Process cities individually
+- Reduce batch size
+- Use chunked processing
+
+**"File not found"**
+- Check paths match [Project Structure](../PROJECT_STRUCTURE.md)
+- Verify files were generated by previous steps
+- Check for typos in filenames
+
+**"CUDA out of memory"**
+- Reduce batch size in ML scripts
+- Use CPU inference (slower but works)
+- Close other GPU programs
+
+### Getting Help
+
+1. Check relevant documentation section
+2. Review logs in `logs/` directory
+3. Examine test scripts in `tests/` for examples
+4. Check git history for recent changes
+
+## Contributing
+
+### Adding New Cities
+
+1. Add to `docs/hot_cities.txt`
+2. Run download script
+3. Process through pipeline
+4. Update visualizations
+
+### Adding New Features
+
+1. Prototype in notebook (`notebooks/`)
+2. Develop in test script (`tests/`)
+3. Create production script (`scripts/`)
+4. Update relevant documentation
+5. Add to appropriate pipeline
+
+### Code Style
+
+- Follow existing patterns in codebase
+- Add ABOUTME comments to new files
+- Use type hints for function signatures
+- Log important steps and errors
+- Include docstrings for public functions
+
+## Version History
+
+See main [WORKFLOW_SUMMARY.md](../WORKFLOW_SUMMARY.md) for detailed changelog.
+
+**Latest Updates**:
+- Enhanced UTCI data collection with multi-day context
+- Optimized batch processing with multithreading
+- Comprehensive visualization suite
+- Project reorganization for maintainability
+- Complete documentation in `docs/` folder
+
+## License
+
+See [LICENSE](LICENSE) for project licensing information.
+
+## Citation
+
+If you use this code or data in academic work, please cite:
+```
+[Citation information to be added]
+```
+
+## Contact
+
+For questions or issues:
+- Create issue in project repository
+- Check existing documentation
+- Review code comments and docstrings

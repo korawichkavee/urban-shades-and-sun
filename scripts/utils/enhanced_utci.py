@@ -7,9 +7,13 @@ import numpy as np
 import thermofeel
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Tuple, Optional
+from pathlib import Path
+import diskcache
 
-# Simple in-memory cache: {(lat_q, lon_q, date_utc): data_dict}
-_era5_cache = {}
+# Persistent disk cache for ERA5 data
+_cache_dir = Path(__file__).parent.parent.parent / "cache" / "era5_cache"
+_cache_dir.mkdir(parents=True, exist_ok=True)
+_era5_cache = diskcache.Cache(str(_cache_dir), size_limit=10e9)  # 10GB limit
 
 
 def _round_coord_for_cache(lat, lon, decimals=2):
