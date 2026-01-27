@@ -21,12 +21,16 @@ def _round_coord_for_cache(lat, lon, decimals=2):
     return round(lat, decimals), round(lon, decimals)
 
 
-def _fetch_era5_multi_day(lat, lon, start_date_str, end_date_str):
+def _fetch_era5_multi_day(lat, lon, start_date_str, end_date_str, max_retries=3):
     """
     Fetch ERA5 hourly data for multiple days at a given location.
     Includes temperature, dewpoint, wind speed, and precipitation.
     Returns the 'hourly' dict from Open-Meteo.
+
+    Uses exponential backoff for rate limit errors (429).
     """
+    import time
+
     lat_q, lon_q = _round_coord_for_cache(lat, lon)
     cache_key = (lat_q, lon_q, start_date_str, end_date_str)
 
@@ -43,25 +47,42 @@ def _fetch_era5_multi_day(lat, lon, start_date_str, end_date_str):
         "&timezone=UTC"
     )
 
-    try:
-        resp = requests.get(url, timeout=30)
-        resp.raise_for_status()
-        data = resp.json()
-    except requests.exceptions.RequestException as e:
-        print(f"[ERROR] ERA5 request failed for ({lat_q}, {lon_q}, {start_date_str}-{end_date_str}): {e}")
-        return None
+    for attempt in range(max_retries):
+        try:
+            resp = requests.get(url, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
 
-    if "error" in data:
-        print(f"[ERROR] Open-Meteo ERA5 API error: {data.get('reason')}")
-        return None
+            if "error" in data:
+                print(f"[ERROR] Open-Meteo ERA5 API error: {data.get('reason')}")
+                return None
 
-    if "hourly" not in data:
-        print(f"[ERROR] ERA5 response missing 'hourly' for ({lat_q}, {lon_q}, {start_date_str}-{end_date_str})")
-        return None
+            if "hourly" not in data:
+                print(f"[ERROR] ERA5 response missing 'hourly' for ({lat_q}, {lon_q}, {start_date_str}-{end_date_str})")
+                return None
 
-    hourly = data["hourly"]
-    _era5_cache[cache_key] = hourly
-    return hourly
+            hourly = data["hourly"]
+            _era5_cache[cache_key] = hourly
+            return hourly
+
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 429:  # Rate limit
+                if attempt < max_retries - 1:
+                    wait_time = (2 ** attempt) + (attempt * 0.5)  # Exponential backoff: 1s, 2.5s, 5s
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    print(f"[ERROR] ERA5 rate limit exceeded after {max_retries} retries: ({lat_q}, {lon_q}, {start_date_str}-{end_date_str})")
+                    return None
+            else:
+                print(f"[ERROR] ERA5 HTTP error for ({lat_q}, {lon_q}, {start_date_str}-{end_date_str}): {e}")
+                return None
+
+        except requests.exceptions.RequestException as e:
+            print(f"[ERROR] ERA5 request failed for ({lat_q}, {lon_q}, {start_date_str}-{end_date_str}): {e}")
+            return None
+
+    return None
 
 
 def _calculate_utci_from_met(Ta_C, Td_C, Va):
