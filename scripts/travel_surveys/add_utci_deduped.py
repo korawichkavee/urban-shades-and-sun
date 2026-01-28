@@ -18,7 +18,7 @@ import time
 import signal
 
 
-MAX_WORKERS = 8  # Conservative to avoid rate limiting
+MAX_WORKERS = 20  # Conservative to avoid rate limiting
 CHECKPOINT_INTERVAL = 1000  # Save every N unique fetches
 INTER_CHUNK_DELAY = 5  # Seconds to wait between chunks to respect rate limits
 

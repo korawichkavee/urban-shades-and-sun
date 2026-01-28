@@ -19,3 +19,4 @@ data/
 cache/
 # API configuration (contains sensitive keys)
 config/config.json
+*.db

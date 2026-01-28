@@ -14,6 +14,7 @@ import logging
 from datetime import datetime
 import calendar
 import random
+import argparse
 from tqdm import tqdm
 
 
@@ -100,6 +101,11 @@ def identify_walk_mode(mode_str):
 
 
 def main():
+    parser = argparse.ArgumentParser(description='Annotate merged metro surveys with datetime, locations, and prepare for UTCI')
+    parser.add_argument('--input', type=str, help='Input CSV file path (default: metro_surveys_raw_merged.csv)')
+    parser.add_argument('--output', type=str, help='Output CSV file path (default: metro_surveys_standardized.csv)')
+    args = parser.parse_args()
+
     logger = setup_logging()
     project_root = Path(__file__).parent.parent.parent
 
@@ -108,7 +114,13 @@ def main():
     logger.info("="*70)
 
     # Load merged data
-    input_path = project_root / "data" / "transit_surveys" / "processed" / "metro_surveys_raw_merged.csv"
+    if args.input:
+        input_path = Path(args.input)
+        if not input_path.is_absolute():
+            input_path = project_root / input_path
+    else:
+        input_path = project_root / "data" / "transit_surveys" / "processed" / "metro_surveys_raw_merged.csv"
+
     logger.info(f"\nLoading merged data from {input_path}...")
     df = pd.read_csv(input_path)
     logger.info(f"  Loaded {len(df):,} trips from {df['survey'].nunique()} surveys")
@@ -189,11 +201,18 @@ def main():
         # Convert ZIP and county to strings (they may be floats from CSV)
         zip_code = None
         if pd.notna(row['zip']):
-            zip_code = str(int(float(row['zip']))).zfill(5)
+            try:
+                zip_code = str(int(float(row['zip']))).zfill(5)
+            except (ValueError, TypeError):
+                pass
 
         county_fips = None
         if pd.notna(row['county']):
-            county_fips = str(int(float(row['county']))).zfill(5)
+            try:
+                county_fips = str(int(float(row['county']))).zfill(5)
+            except (ValueError, TypeError):
+                # County might be a name instead of FIPS code - skip it
+                pass
 
         lat, lon, source = sampler.get_location(
             zip_code=zip_code,
@@ -221,7 +240,13 @@ def main():
     logger.info(f"\nTrips ready for UTCI annotation: {len(valid_df):,} / {len(df):,} ({100*len(valid_df)/len(df):.1f}%)")
 
     # Save standardized data
-    output_path = project_root / "data" / "transit_surveys" / "processed" / "metro_surveys_standardized.csv"
+    if args.output:
+        output_path = Path(args.output)
+        if not output_path.is_absolute():
+            output_path = project_root / output_path
+    else:
+        output_path = project_root / "data" / "transit_surveys" / "processed" / "metro_surveys_standardized.csv"
+
     valid_df.to_csv(output_path, index=False)
     logger.info(f"\nSaved standardized data: {output_path}")
 
