@@ -16,3 +16,6 @@
 data/
 *.tar.gz
 *.pyc
+
+# API configuration (contains sensitive keys)
+config/config.json

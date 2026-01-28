@@ -1,6 +1,7 @@
-# ABOUTME: Enhanced UTCI data collection including prior/next day averages and precipitation.
-# ABOUTME: Fetches current UTCI, daily averages for surrounding days, and rain data from ERA5.
+# ABOUTME: UTCI data collection from ERA5 climate data via Open-Meteo API
+# ABOUTME: Fetches current UTCI, temperature, dewpoint, and wind speed at image timestamp
 
+import sys
 import math
 import requests
 import numpy as np
@@ -9,6 +10,10 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, Tuple, Optional
 from pathlib import Path
 import diskcache
+
+# Add config to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'config'))
+from api_config import get_era5_url
 
 # Persistent disk cache for ERA5 data
 _cache_dir = Path(__file__).parent.parent.parent / "cache" / "era5_cache"
@@ -21,10 +26,10 @@ def _round_coord_for_cache(lat, lon, decimals=2):
     return round(lat, decimals), round(lon, decimals)
 
 
-def _fetch_era5_multi_day(lat, lon, start_date_str, end_date_str, max_retries=3):
+def _fetch_era5_single_day(lat, lon, date_str, max_retries=3):
     """
-    Fetch ERA5 hourly data for multiple days at a given location.
-    Includes temperature, dewpoint, wind speed, and precipitation.
+    Fetch ERA5 hourly data for a single day at a given location.
+    Includes temperature, dewpoint, and wind speed.
     Returns the 'hourly' dict from Open-Meteo.
 
     Uses exponential backoff for rate limit errors (429).
@@ -32,19 +37,18 @@ def _fetch_era5_multi_day(lat, lon, start_date_str, end_date_str, max_retries=3)
     import time
 
     lat_q, lon_q = _round_coord_for_cache(lat, lon)
-    cache_key = (lat_q, lon_q, start_date_str, end_date_str)
+    cache_key = (lat_q, lon_q, date_str)
 
     if cache_key in _era5_cache:
         return _era5_cache[cache_key]
 
-    url = (
-        "https://archive-api.open-meteo.com/v1/era5"
-        f"?latitude={lat_q}"
-        f"&longitude={lon_q}"
-        f"&start_date={start_date_str}"
-        f"&end_date={end_date_str}"
-        "&hourly=temperature_2m,dewpoint_2m,wind_speed_10m,precipitation"
-        "&timezone=UTC"
+    url = get_era5_url(
+        latitude=lat_q,
+        longitude=lon_q,
+        start_date=date_str,
+        end_date=date_str,
+        hourly_vars="temperature_2m,dewpoint_2m,wind_speed_10m",
+        timezone="UTC"
     )
 
     for attempt in range(max_retries):
@@ -58,7 +62,7 @@ def _fetch_era5_multi_day(lat, lon, start_date_str, end_date_str, max_retries=3)
                 return None
 
             if "hourly" not in data:
-                print(f"[ERROR] ERA5 response missing 'hourly' for ({lat_q}, {lon_q}, {start_date_str}-{end_date_str})")
+                print(f"[ERROR] ERA5 response missing 'hourly' for ({lat_q}, {lon_q}, {date_str})")
                 return None
 
             hourly = data["hourly"]
@@ -72,14 +76,14 @@ def _fetch_era5_multi_day(lat, lon, start_date_str, end_date_str, max_retries=3)
                     time.sleep(wait_time)
                     continue
                 else:
-                    print(f"[ERROR] ERA5 rate limit exceeded after {max_retries} retries: ({lat_q}, {lon_q}, {start_date_str}-{end_date_str})")
+                    print(f"[ERROR] ERA5 rate limit exceeded after {max_retries} retries: ({lat_q}, {lon_q}, {date_str})")
                     return None
             else:
-                print(f"[ERROR] ERA5 HTTP error for ({lat_q}, {lon_q}, {start_date_str}-{end_date_str}): {e}")
+                print(f"[ERROR] ERA5 HTTP error for ({lat_q}, {lon_q}, {date_str}): {e}")
                 return None
 
         except requests.exceptions.RequestException as e:
-            print(f"[ERROR] ERA5 request failed for ({lat_q}, {lon_q}, {start_date_str}-{end_date_str}): {e}")
+            print(f"[ERROR] ERA5 request failed for ({lat_q}, {lon_q}, {date_str}): {e}")
             return None
 
     return None
@@ -111,62 +115,16 @@ def _calculate_utci_from_met(Ta_C, Td_C, Va):
     return utci_K.item(), utci_C.item()
 
 
-def _calculate_daily_average_utci(hourly_data, date_str):
-    """Calculate average UTCI for a specific day from hourly data."""
-    time_strings = hourly_data.get("time", [])
-    temps = hourly_data.get("temperature_2m", [])
-    dews = hourly_data.get("dewpoint_2m", [])
-    winds = hourly_data.get("wind_speed_10m") or hourly_data.get("windspeed_10m")
-
-    if not time_strings or not temps or not dews or winds is None:
-        return math.nan
-
-    utci_values = []
-
-    for i, time_str in enumerate(time_strings):
-        if time_str.startswith(date_str):
-            Ta_C = temps[i]
-            Td_C = dews[i]
-            Va = winds[i]
-
-            _, utci_C = _calculate_utci_from_met(Ta_C, Td_C, Va)
-            if not math.isnan(utci_C):
-                utci_values.append(utci_C)
-
-    if utci_values:
-        return np.mean(utci_values)
-    return math.nan
-
-
-def _check_daily_rain(hourly_data, date_str, threshold_mm=1.0):
-    """Check if a specific day had rain (total precipitation > threshold)."""
-    time_strings = hourly_data.get("time", [])
-    precip = hourly_data.get("precipitation", [])
-
-    if not time_strings or not precip:
-        return None
-
-    daily_precip = 0.0
-
-    for i, time_str in enumerate(time_strings):
-        if time_str.startswith(date_str):
-            if precip[i] is not None and not math.isnan(precip[i]):
-                daily_precip += precip[i]
-
-    return daily_precip > threshold_mm
-
-
 def get_enhanced_utci_data(lat, lon, timestamp) -> Dict:
     """
-    Compute enhanced UTCI data for a given location and time.
+    Compute UTCI data for a given location and time.
 
     Returns dict with:
-    - utci_K, utci_C: Current UTCI
-    - utci_timestamp: Matched timestamp
-    - prior_day_utci_avg_C: Average UTCI for prior day
-    - next_day_utci_avg_C: Average UTCI for next day
-    - prior_day_rain: Boolean indicating if prior day had rain
-    - next_day_rain: Boolean indicating if next day had rain
+    - utci_K, utci_C: Current UTCI (Kelvin and Celsius)
+    - utci_timestamp: Matched timestamp from ERA5 data
+    - wind_speed_10m: Wind speed at 10m height (m/s)
+    - temperature_2m: Air temperature at 2m height (°C)
+    - dewpoint_2m: Dewpoint temperature at 2m height (°C)
     """
     # Parse and normalize timestamp to UTC
     if isinstance(timestamp, str):
@@ -185,14 +143,10 @@ def get_enhanced_utci_data(lat, lon, timestamp) -> Dict:
     target_utc_naive = target_utc.replace(tzinfo=None)
     current_date = target_utc_naive.date()
 
-    prior_date = current_date - timedelta(days=1)
-    next_date = current_date + timedelta(days=1)
+    # Fetch data for current day only
+    date_str = current_date.isoformat()
 
-    # Fetch data for all three days
-    start_date_str = prior_date.isoformat()
-    end_date_str = next_date.isoformat()
-
-    hourly = _fetch_era5_multi_day(lat, lon, start_date_str, end_date_str)
+    hourly = _fetch_era5_single_day(lat, lon, date_str)
 
     result = {
         'utci_K': math.nan,
@@ -201,10 +155,6 @@ def get_enhanced_utci_data(lat, lon, timestamp) -> Dict:
         'wind_speed_10m': math.nan,
         'temperature_2m': math.nan,
         'dewpoint_2m': math.nan,
-        'prior_day_utci_avg_C': math.nan,
-        'next_day_utci_avg_C': math.nan,
-        'prior_day_rain': None,
-        'next_day_rain': None,
     }
 
     if hourly is None:
@@ -237,13 +187,6 @@ def get_enhanced_utci_data(lat, lon, timestamp) -> Dict:
         result['temperature_2m'] = Ta_C
         result['dewpoint_2m'] = Td_C
 
-    # Calculate daily averages and rain for prior/next days
-    result['prior_day_utci_avg_C'] = _calculate_daily_average_utci(hourly, prior_date.isoformat())
-    result['next_day_utci_avg_C'] = _calculate_daily_average_utci(hourly, next_date.isoformat())
-
-    result['prior_day_rain'] = _check_daily_rain(hourly, prior_date.isoformat())
-    result['next_day_rain'] = _check_daily_rain(hourly, next_date.isoformat())
-
     return result
 
 
@@ -252,12 +195,11 @@ if __name__ == "__main__":
     lat, lon = 13.75, 100.51
     ts_str = "2021-05-14T18:08:44+07:00"
 
-    print("Testing enhanced UTCI data collection...")
+    print("Testing UTCI data collection...")
     result = get_enhanced_utci_data(lat, lon, ts_str)
 
     print(f"\nResults for {ts_str}:")
-    print(f"  Current UTCI: {result['utci_C']:.2f} °C at {result['utci_timestamp']}")
-    print(f"  Prior day avg UTCI: {result['prior_day_utci_avg_C']:.2f} °C")
-    print(f"  Next day avg UTCI: {result['next_day_utci_avg_C']:.2f} °C")
-    print(f"  Prior day rain: {result['prior_day_rain']}")
-    print(f"  Next day rain: {result['next_day_rain']}")
+    print(f"  UTCI: {result['utci_C']:.2f} °C at {result['utci_timestamp']}")
+    print(f"  Temperature: {result['temperature_2m']:.2f} °C")
+    print(f"  Dewpoint: {result['dewpoint_2m']:.2f} °C")
+    print(f"  Wind speed: {result['wind_speed_10m']:.2f} m/s")

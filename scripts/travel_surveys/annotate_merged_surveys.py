@@ -185,9 +185,19 @@ def main():
 
     for idx, row in tqdm(df.iterrows(), total=len(df), desc="  Sampling locations"):
         variation_key = f"{row['household_id']}_{row['person_id']}"
+
+        # Convert ZIP and county to strings (they may be floats from CSV)
+        zip_code = None
+        if pd.notna(row['zip']):
+            zip_code = str(int(float(row['zip']))).zfill(5)
+
+        county_fips = None
+        if pd.notna(row['county']):
+            county_fips = str(int(float(row['county']))).zfill(5)
+
         lat, lon, source = sampler.get_location(
-            zip_code=row['zip'],
-            county_fips=row['county'],
+            zip_code=zip_code,
+            county_fips=county_fips,
             variation_key=variation_key
         )
         lats.append(lat)
