@@ -9,10 +9,10 @@ from pathlib import Path
 from collections import defaultdict
 
 # Define paths
-BASE_DIR = Path("/home/kieran/Documents/Python/sunny_day_SVI/city7sample")
-JSON_FILE = BASE_DIR / "images_to_label/batch2/new_labeled.json"
-SOURCE_IMAGES_DIR = BASE_DIR / "Buenos-Airesimg/walk_images"
-OUTPUT_DIR = BASE_DIR / "images_to_label/batch2/sunny_batch_from_json"
+BASE_DIR = Path("/home/kieran/Documents/Python/sunny_day_SVI")
+JSON_FILE = BASE_DIR / "data/training_labels.json"
+SOURCE_IMAGES_DIR = BASE_DIR / "data/raw/city7sample/Buenos-Airesimg/walk_images"
+OUTPUT_DIR = BASE_DIR / "data/yolo_training_dataset"
 
 # Split ratio
 VAL_RATIO = 0.3
