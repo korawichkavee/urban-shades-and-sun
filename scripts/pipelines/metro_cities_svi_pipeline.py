@@ -23,39 +23,47 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from sunny_shade_pipeline import SunnyShadePipeline
 from download_mly_points import get_mly_gdf, save_csv
+from fetch_city_boundaries import get_city_bbox
 
 
 # Metro cities configuration based on travel survey data
 # Coordinates from worldcities.csv, all cities with UTCI-annotated metro survey data
+# Sorted by population (smallest first) for faster initial results
 METRO_CITIES = [
-    # Recoverable surveys (UTCI annotation in progress - 7 cities)
-    {"name": "Anchorage", "country": "USA", "lat": 61.15, "lon": -149.11, "state": "AK"},
-    {"name": "Boston", "country": "USA", "lat": 42.32, "lon": -71.08, "state": "MA"},
-    {"name": "Boise", "country": "USA", "lat": 43.60, "lon": -116.23, "state": "ID"},
-    {"name": "Louisville", "country": "USA", "lat": 38.17, "lon": -85.65, "state": "KY"},
-    {"name": "Los Angeles", "country": "USA", "lat": 34.11, "lon": -118.41, "state": "CA"},
-    {"name": "Salt Lake City", "country": "USA", "lat": 40.78, "lon": -111.93, "state": "UT"},
-    {"name": "San Francisco", "country": "USA", "lat": 37.76, "lon": -122.44, "state": "CA"},
+    # Smallest cities first (< 200k)
+    {"name": "Evansville", "country": "USA", "lat": 37.99, "lon": -87.53, "state": "IN", "pop": 117979},
+    {"name": "Columbia", "country": "USA", "lat": 34.04, "lon": -80.90, "state": "SC", "pop": 136632},
+    {"name": "Boise", "country": "USA", "lat": 43.60, "lon": -116.23, "state": "ID", "pop": 228959},
+    {"name": "Anchorage", "country": "USA", "lat": 61.15, "lon": -149.11, "state": "AK", "pop": 291538},
 
-    # Existing metro surveys (UTCI already annotated - 13 cities)
-    {"name": "Atlanta", "country": "USA", "lat": 33.76, "lon": -84.42, "state": "GA"},
-    {"name": "Cleveland", "country": "USA", "lat": 41.48, "lon": -81.68, "state": "OH"},
-    {"name": "Columbia", "country": "USA", "lat": 34.04, "lon": -80.90, "state": "SC"},
-    {"name": "Denver", "country": "USA", "lat": 39.76, "lon": -104.88, "state": "CO"},
-    {"name": "Evansville", "country": "USA", "lat": 37.99, "lon": -87.53, "state": "IN"},
-    {"name": "Honolulu", "country": "USA", "lat": 21.33, "lon": -157.85, "state": "HI"},
-    {"name": "Minneapolis", "country": "USA", "lat": 44.96, "lon": -93.27, "state": "MN"},
-    {"name": "Phoenix", "country": "USA", "lat": 33.57, "lon": -112.09, "state": "AZ"},
-    {"name": "Raleigh", "country": "USA", "lat": 35.83, "lon": -78.64, "state": "NC"},
-    {"name": "Seattle", "country": "USA", "lat": 47.62, "lon": -122.32, "state": "WA"},
-    {"name": "St. Louis", "country": "USA", "lat": 38.64, "lon": -90.25, "state": "MO"},
-    {"name": "Tucson", "country": "USA", "lat": 32.15, "lon": -110.88, "state": "AZ"},
+    # Medium cities (200k - 500k)
+    {"name": "St. Louis", "country": "USA", "lat": 38.64, "lon": -90.25, "state": "MO", "pop": 301578},
+    {"name": "Honolulu", "country": "USA", "lat": 21.33, "lon": -157.85, "state": "HI", "pop": 345064},
+    {"name": "Cleveland", "country": "USA", "lat": 41.48, "lon": -81.68, "state": "OH", "pop": 372624},
+    {"name": "Minneapolis", "country": "USA", "lat": 44.96, "lon": -93.27, "state": "MN", "pop": 425115},
+    {"name": "Raleigh", "country": "USA", "lat": 35.83, "lon": -78.64, "state": "NC", "pop": 467665},
+    {"name": "Atlanta", "country": "USA", "lat": 33.76, "lon": -84.42, "state": "GA", "pop": 498044},
+
+    # Larger cities (500k - 1M)
+    {"name": "Tucson", "country": "USA", "lat": 32.15, "lon": -110.88, "state": "AZ", "pop": 542629},
+    {"name": "Seattle", "country": "USA", "lat": 47.62, "lon": -122.32, "state": "WA", "pop": 733919},
+    {"name": "Denver", "country": "USA", "lat": 39.76, "lon": -104.88, "state": "CO", "pop": 716492},
+    {"name": "Boston", "country": "USA", "lat": 42.32, "lon": -71.08, "state": "MA", "pop": 692600},
+    {"name": "Louisville", "country": "USA", "lat": 38.17, "lon": -85.65, "state": "KY", "pop": 633045},
+    {"name": "Salt Lake City", "country": "USA", "lat": 40.78, "lon": -111.93, "state": "UT", "pop": 200567},
+
+    # Largest cities (> 1M)
+    {"name": "Phoenix", "country": "USA", "lat": 33.57, "lon": -112.09, "state": "AZ", "pop": 1680992},
+    {"name": "San Francisco", "country": "USA", "lat": 37.76, "lon": -122.44, "state": "CA", "pop": 881549},
+    {"name": "Los Angeles", "country": "USA", "lat": 34.11, "lon": -118.41, "state": "CA", "pop": 3979576},
 ]
 
 # Note: Some cities have multiple survey years (e.g., Atlanta 1991 & 2001, Seattle multiple years)
 # but we only need SVI data from one representative sample per city
 
-BATCH_SIZE = 100  # Process images in batches to manage memory
+BATCH_SIZE = 256  # Process images in batches to manage memory and saturate GPU
+# With ~50% sunny images, this gives ~128 sunny images per batch
+# This saturates YOLO batch size of 32 (4 full batches) for optimal GPU utilization
 MAPILLARY_TOKEN = 'MLY|9798203303595429|e2d4e749e96af419787ec1ca33019e3f'
 
 
@@ -198,14 +206,14 @@ async def download_images_batch_async(image_data_list, output_dir, logger, token
 
 
 def fetch_city_metadata_bbox(city_config, output_dir, logger, bbox_size=0.15):
-    """Fetch metadata for a city using bounding box around city center.
+    """Fetch metadata for a city using actual city boundaries or fallback bbox.
 
     Args:
-        city_config: City configuration dict with name, lat, lon
+        city_config: City configuration dict with name, lat, lon, state
         output_dir: Directory to save metadata CSV
         logger: Logger instance
-        bbox_size: Size of bounding box in degrees (default 0.15 = ~10km radius)
-                   Use smaller values (e.g., 0.01 = ~1km) for testing
+        bbox_size: Size of bounding box in degrees if boundary fetch fails
+                   (default 0.15 = ~10km radius)
 
     Returns:
         Path to saved CSV or None if failed
@@ -213,24 +221,28 @@ def fetch_city_metadata_bbox(city_config, output_dir, logger, bbox_size=0.15):
     logger.info(f"Fetching metadata for {city_config['name']}, {city_config['country']}")
 
     try:
-        # Create bounding box around city center
-        # bbox_size: 0.15 = ~10km radius, 0.01 = ~1km radius at mid-latitudes
-        min_lon = city_config['lon'] - bbox_size
-        max_lon = city_config['lon'] + bbox_size
-        min_lat = city_config['lat'] - bbox_size
-        max_lat = city_config['lat'] + bbox_size
+        # Get actual city boundary or fallback bbox
+        logger.info(f"  Getting city boundary...")
+        boundary_result = get_city_bbox(city_config)
+        bbox = boundary_result['bbox']
+        boundary_gdf = boundary_result['boundary']
 
-        # Fetch Mapillary points
-        logger.info(f"  Bounding box: ({min_lat:.3f}, {min_lon:.3f}) to ({max_lat:.3f}, {max_lon:.3f})")
+        logger.info(f"  Using {boundary_result['method']}")
+        logger.info(f"  Bounding box: ({bbox['south']:.3f}, {bbox['west']:.3f}) to ({bbox['north']:.3f}, {bbox['east']:.3f})")
+
+        if boundary_gdf is not None:
+            area_km2 = boundary_gdf.to_crs(epsg=3857).area.sum() / 1e6
+            logger.info(f"  City area: {area_km2:.2f} km²")
 
         # Use download_mly_points logic with bbox
         mly.set_access_token(MAPILLARY_TOKEN)
 
         # Get image data (returns GeoJSON string)
-        # NOTE: images_in_bbox uses Tiles API (50,000 requests/day limit)
-        data = mly.images_in_bbox(
-            bbox={'west': min_lon, 'south': min_lat, 'east': max_lon, 'north': max_lat}
-        )
+        # NOTE: images_in_bbox uses Tiles API which fetches tiles sequentially
+        #       For large cities, this can take 30-60+ minutes as it requests hundreds of tiles
+        #       Each tile request takes ~300-500ms. API limit: 50,000 requests/day
+        logger.info(f"  Fetching image metadata (this may take 5-60 minutes for large cities)...")
+        data = mly.images_in_bbox(bbox=bbox)
 
         if not data:
             logger.warning(f"  No metadata found for {city_config['name']}")
@@ -252,8 +264,32 @@ def fetch_city_metadata_bbox(city_config, output_dir, logger, bbox_size=0.15):
             logger.warning(f"  No features found for {city_config['name']}")
             return None
 
-        # Create GeoDataFrame then convert to regular DataFrame
-        gdf = gp.GeoDataFrame.from_features(geojson_dict)
+        # Create GeoDataFrame (keep geometry for filtering)
+        gdf = gp.GeoDataFrame.from_features(geojson_dict, crs="EPSG:4326")  # Mapillary uses WGS84
+
+        # Filter to only images within actual city boundary (if available)
+        initial_count = len(gdf)
+        if boundary_gdf is not None:
+            logger.info(f"  Filtering {initial_count:,} images to city boundary...")
+            # Ensure CRS match - both should be in WGS84 for lat/lon data
+            if boundary_gdf.crs is None:
+                boundary_gdf = boundary_gdf.set_crs("EPSG:4326")
+            if boundary_gdf.crs != gdf.crs:
+                boundary_gdf = boundary_gdf.to_crs(gdf.crs)
+
+            # Spatial join to keep only points within boundary
+            gdf = gp.sjoin(gdf, boundary_gdf, how='inner', predicate='within')
+            # Drop the extra columns from the spatial join
+            gdf = gdf[[col for col in gdf.columns if not col.startswith('index_')]]
+
+            filtered_count = len(gdf)
+            logger.info(f"  Kept {filtered_count:,} images within boundary ({filtered_count/initial_count*100:.1f}%)")
+        else:
+            logger.info(f"  No boundary filter applied, keeping all {initial_count:,} images in bbox")
+
+        # Extract lat/lon and convert to DataFrame
+        gdf['lon'] = gdf.geometry.x
+        gdf['lat'] = gdf.geometry.y
         df = pd.DataFrame(gdf.drop(columns='geometry'))
 
         # Standardize column names
@@ -265,7 +301,7 @@ def fetch_city_metadata_bbox(city_config, output_dir, logger, bbox_size=0.15):
         csv_path = output_dir / f"{city_name_safe}_metadata.csv"
         df.to_csv(csv_path, index=False)
 
-        logger.info(f"  Metadata saved: {len(df)} images")
+        logger.info(f"  ✓ Metadata saved: {len(df):,} images")
         return csv_path
 
     except Exception as e:
@@ -412,10 +448,10 @@ def process_city_batch(city_config, base_output_dir, pipeline, logger, test_mode
                 existing_df = pd.read_csv(output_csv)
                 combined_df = pd.concat([existing_df, batch_merged], ignore_index=True)
                 combined_df.to_csv(output_csv, index=False)
+                logger.info(f"    ✓ Saved incremental results to {output_csv.name} (now {len(combined_df):,} total images)")
             else:
                 batch_merged.to_csv(output_csv, index=False)
-
-            logger.info(f"    ✓ Saved incremental results to {output_csv.name}")
+                logger.info(f"    ✓ Created output file {output_csv.name} with {len(batch_merged):,} images")
 
         except Exception as e:
             logger.error(f"    Analysis error: {e}")

@@ -34,6 +34,7 @@ echo "Copying pipeline scripts..."
 cp "$BASE_DIR/scripts/pipelines/metro_cities_svi_pipeline.py" "$PACKAGE_DIR/scripts/pipelines/"
 cp "$BASE_DIR/scripts/pipelines/test_metro_cities_svi_pipeline.py" "$PACKAGE_DIR/scripts/pipelines/"
 cp "$BASE_DIR/scripts/pipelines/sunny_shade_pipeline.py" "$PACKAGE_DIR/scripts/pipelines/"
+cp "$BASE_DIR/scripts/pipelines/fetch_city_boundaries.py" "$PACKAGE_DIR/scripts/pipelines/"
 cp "$BASE_DIR/scripts/pipelines/run_metro_svi_tmux.sh" "$PACKAGE_DIR/scripts/pipelines/"
 
 # Copy data collection scripts
@@ -95,9 +96,13 @@ aiohttp>=3.8.0
 # Progress bars
 tqdm>=4.65.0
 
-# Geospatial (optional, for enhanced features)
+# Geospatial
 geopandas>=0.12.0
 shapely>=2.0.0
+osmnx>=2.0.0
+
+# Geospatial backends
+pyogrio>=0.6.0
 EOF
 
 # Create setup script

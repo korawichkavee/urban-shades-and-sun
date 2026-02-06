@@ -105,14 +105,15 @@ class SunnyShadePipeline:
 
         return counts
 
-    def detect_shade_batch(self, image_paths, batch_size=8):
+    def detect_shade_batch(self, image_paths, batch_size=32):
         """
         Detect people and shade for multiple images using batch inference.
 
         Args:
             image_paths: List of paths to image files
-            batch_size: Number of images to process in parallel (default: 8)
+            batch_size: Number of images to process in parallel (default: 32 for 24GB GPU)
                        Note: YOLO uses more memory than ViT, so smaller batch size
+                       Adjust based on GPU VRAM: 4=4GB, 8=8GB, 16=16GB, 32=24GB
 
         Returns:
             List of dicts: [{'person': int, 'inshade': int, 'outshade': int}, ...]
@@ -147,13 +148,14 @@ class SunnyShadePipeline:
 
         return results
 
-    def classify_sunny_batch(self, image_paths, batch_size=32):
+    def classify_sunny_batch(self, image_paths, batch_size=128):
         """
         Classify multiple images as sunny/not-sunny using batch inference.
 
         Args:
             image_paths: List of paths to image files
-            batch_size: Number of images to process in parallel (default: 32)
+            batch_size: Number of images to process in parallel (default: 128 for 24GB GPU)
+                       Adjust based on GPU VRAM: 16=4GB, 32=8GB, 64=16GB, 128=24GB
 
         Returns:
             List of tuples: [(is_sunny (bool), probability (float)), ...]
@@ -198,20 +200,20 @@ class SunnyShadePipeline:
 
         return results
 
-    def process_folder_batch(self, image_folder, output_csv=None, vit_batch_size=32, yolo_batch_size=8):
+    def process_folder_batch(self, image_folder, output_csv=None, vit_batch_size=128, yolo_batch_size=32):
         """
         Process all images in a folder with optimized batch inference.
 
         This is significantly faster than process_folder() as it uses:
-        - Batch inference for ViT classification (32 images at once)
-        - Batch inference for YOLO detection (8 images at once, only sunny images)
+        - Batch inference for ViT classification (128 images at once on 24GB GPU)
+        - Batch inference for YOLO detection (32 images at once, only sunny images)
         - Reduced I/O overhead
 
         Args:
             image_folder: Path to folder containing images
             output_csv: Path to output CSV file (optional)
-            vit_batch_size: Batch size for ViT inference (default: 32)
-            yolo_batch_size: Batch size for YOLO inference (default: 8, smaller due to higher memory)
+            vit_batch_size: Batch size for ViT inference (default: 128 for 24GB GPU)
+            yolo_batch_size: Batch size for YOLO inference (default: 32 for 24GB GPU)
 
         Returns:
             DataFrame with results
