@@ -307,8 +307,12 @@ def process_city_batch(city_config, base_output_dir, pipeline, logger, test_mode
     logger.info(f"Processing City: {city_config['name']}, {city_config['country']}")
     logger.info("=" * 80)
 
-    # Step 1: Fetch metadata
-    csv_path = fetch_city_metadata_bbox(city_config, city_dir, logger)
+    # Step 1: Fetch metadata (should already be done in prefetch phase)
+    csv_path = city_dir / f"{city_name}_metadata.csv"
+    if not csv_path.exists():
+        logger.warning(f"Metadata not found, fetching now...")
+        csv_path = fetch_city_metadata_bbox(city_config, city_dir, logger)
+
     if csv_path is None or not csv_path.exists():
         logger.error(f"Skipping {city_config['name']} - no metadata")
         return stats
@@ -329,14 +333,32 @@ def process_city_batch(city_config, base_output_dir, pipeline, logger, test_mode
     images_dir = city_dir / "images_temp"
     images_dir.mkdir(parents=True, exist_ok=True)
 
-    results_list = []
+    # Load existing progress if resuming
+    output_csv = city_dir / f"{city_name}_svi_analyzed.csv"
+    existing_ids = set()
+    if output_csv.exists():
+        logger.info(f"Resuming from existing progress file...")
+        existing_df = pd.read_csv(output_csv)
+        existing_ids = set(existing_df['id'].astype(str).tolist())
+        logger.info(f"  Already processed: {len(existing_ids)} images")
+        stats['analyzed'] = len(existing_ids)
+        stats['sunny'] = existing_df['is_sunny'].sum() if 'is_sunny' in existing_df.columns else 0
 
     # Step 2 & 3: Download and analyze in batches
     logger.info(f"Processing in batches of {BATCH_SIZE}")
+    total_batches = (len(df) - 1) // BATCH_SIZE + 1
 
     for batch_idx in range(0, len(df), BATCH_SIZE):
+        batch_num = batch_idx // BATCH_SIZE + 1
         batch_df = df.iloc[batch_idx:batch_idx + BATCH_SIZE]
-        logger.info(f"  Batch {batch_idx//BATCH_SIZE + 1}/{(len(df)-1)//BATCH_SIZE + 1}: {len(batch_df)} images")
+
+        # Skip already processed images
+        batch_df = batch_df[~batch_df['id'].astype(str).isin(existing_ids)]
+        if len(batch_df) == 0:
+            logger.info(f"  Batch {batch_num}/{total_batches}: All images already processed, skipping")
+            continue
+
+        logger.info(f"  Batch {batch_num}/{total_batches}: {len(batch_df)} images to process")
 
         # Prepare download tasks
         download_tasks = []
@@ -361,17 +383,44 @@ def process_city_batch(city_config, base_output_dir, pipeline, logger, test_mode
         # Analyze batch
         logger.info(f"    Running sunny/shade analysis...")
         try:
-            batch_results = pipeline.process_folder(
+            batch_results = pipeline.process_folder_batch(
                 images_dir,
-                output_csv=None  # Don't save intermediate CSVs
+                output_csv=None  # Don't save intermediate CSVs from pipeline
             )
-            results_list.append(batch_results)
             sunny_count = batch_results['is_sunny'].sum() if 'is_sunny' in batch_results.columns else 0
             stats['analyzed'] += len(batch_results)
             stats['sunny'] += sunny_count
             logger.info(f"    Analyzed: {len(batch_results)}, Sunny: {sunny_count}")
+
+            # IMPORTANT: Save incremental results after EACH batch
+            # Merge batch results with metadata
+            batch_df['id'] = batch_df['id'].astype(str)
+            batch_results['image_id'] = batch_results['image_id'].astype(str)
+
+            batch_merged = batch_df.merge(
+                batch_results,
+                left_on='id',
+                right_on='image_id',
+                how='left'
+            )
+
+            if 'image_id' in batch_merged.columns:
+                batch_merged = batch_merged.drop(columns=['image_id'])
+
+            # Append to existing CSV or create new one
+            if output_csv.exists():
+                existing_df = pd.read_csv(output_csv)
+                combined_df = pd.concat([existing_df, batch_merged], ignore_index=True)
+                combined_df.to_csv(output_csv, index=False)
+            else:
+                batch_merged.to_csv(output_csv, index=False)
+
+            logger.info(f"    ✓ Saved incremental results to {output_csv.name}")
+
         except Exception as e:
             logger.error(f"    Analysis error: {e}")
+            import traceback
+            traceback.print_exc()
             stats['errors'] += len(batch_df)
 
         # Cleanup batch images to save space
@@ -382,32 +431,7 @@ def process_city_batch(city_config, base_output_dir, pipeline, logger, test_mode
         except Exception as e:
             logger.warning(f"    Cleanup warning: {e}")
 
-    # Step 4: Combine all batch results
-    if results_list:
-        logger.info("Combining all batch results...")
-        combined_results = pd.concat(results_list, ignore_index=True)
-
-        # Merge with original metadata
-        df['id'] = df['id'].astype(str)
-        combined_results['image_id'] = combined_results['image_id'].astype(str)
-
-        merged_df = df.merge(
-            combined_results,
-            left_on='id',
-            right_on='image_id',
-            how='left'
-        )
-
-        if 'image_id' in merged_df.columns:
-            merged_df = merged_df.drop(columns=['image_id'])
-
-        # Save final analyzed CSV
-        output_csv = city_dir / f"{city_name}_svi_analyzed.csv"
-        merged_df.to_csv(output_csv, index=False)
-        logger.info(f"✓ Saved analyzed CSV: {output_csv}")
-        logger.info(f"  Rows: {len(merged_df)}, Sunny: {stats['sunny']}")
-
-    # Step 5: Final cleanup
+    # Step 4: Final cleanup
     logger.info("Final cleanup...")
     try:
         if images_dir.exists():
@@ -417,9 +441,140 @@ def process_city_batch(city_config, base_output_dir, pipeline, logger, test_mode
 
     stats['duration_seconds'] = time.time() - start_time
     logger.info(f"✓ {city_config['name']} complete in {stats['duration_seconds']/60:.1f} minutes")
+
+    # Calculate processing rate
+    if stats['analyzed'] > 0:
+        rate = stats['analyzed'] / stats['duration_seconds']
+        logger.info(f"  Processing rate: {rate:.2f} images/second")
+
     logger.info("")
 
     return stats
+
+
+def prefetch_all_metadata(cities_to_process, base_output_dir, logger):
+    """Prefetch metadata for all cities to estimate total work and runtime.
+
+    Args:
+        cities_to_process: List of city configs to process
+        base_output_dir: Base output directory
+        logger: Logger instance
+
+    Returns:
+        Dict with metadata summary: {city_name: {count: int, csv_path: Path}, ...}
+    """
+    logger.info("=" * 80)
+    logger.info("PHASE 1: METADATA PREFETCH")
+    logger.info("=" * 80)
+    logger.info(f"Fetching metadata for {len(cities_to_process)} cities...")
+    logger.info("This will determine total image count and estimate runtime")
+    logger.info("")
+
+    metadata_summary = {}
+    prefetch_start = time.time()
+
+    for idx, city_config in enumerate(cities_to_process, 1):
+        city_name = city_config['name'].replace(' ', '-').lower()
+        city_dir = base_output_dir / city_name
+        city_dir.mkdir(parents=True, exist_ok=True)
+        csv_path = city_dir / f"{city_name}_metadata.csv"
+
+        logger.info(f"[{idx}/{len(cities_to_process)}] {city_config['name']}, {city_config['state']}")
+
+        # Check if metadata already exists
+        if csv_path.exists():
+            logger.info(f"  Metadata already exists, loading...")
+            try:
+                df = pd.read_csv(csv_path)
+                image_count = len(df)
+                logger.info(f"  ✓ Found {image_count:,} images")
+                metadata_summary[city_config['name']] = {
+                    'count': image_count,
+                    'csv_path': csv_path
+                }
+                continue
+            except Exception as e:
+                logger.warning(f"  Could not load existing metadata: {e}")
+
+        # Fetch new metadata
+        try:
+            fetched_csv = fetch_city_metadata_bbox(city_config, city_dir, logger)
+            if fetched_csv and fetched_csv.exists():
+                df = pd.read_csv(fetched_csv)
+                image_count = len(df)
+                logger.info(f"  ✓ Fetched {image_count:,} images")
+                metadata_summary[city_config['name']] = {
+                    'count': image_count,
+                    'csv_path': fetched_csv
+                }
+            else:
+                logger.warning(f"  ⚠ No metadata available for {city_config['name']}")
+                metadata_summary[city_config['name']] = {
+                    'count': 0,
+                    'csv_path': None
+                }
+        except Exception as e:
+            logger.error(f"  ✗ Error fetching metadata: {e}")
+            metadata_summary[city_config['name']] = {
+                'count': 0,
+                'csv_path': None
+            }
+
+    prefetch_duration = time.time() - prefetch_start
+
+    # Calculate totals and estimates
+    total_images = sum(m['count'] for m in metadata_summary.values())
+    cities_with_data = sum(1 for m in metadata_summary.values() if m['count'] > 0)
+
+    logger.info("")
+    logger.info("=" * 80)
+    logger.info("METADATA PREFETCH COMPLETE")
+    logger.info("=" * 80)
+    logger.info(f"Prefetch duration: {prefetch_duration/60:.1f} minutes")
+    logger.info("")
+    logger.info("Per-City Breakdown:")
+    logger.info("-" * 80)
+
+    for city_name, meta in sorted(metadata_summary.items(), key=lambda x: x[1]['count'], reverse=True):
+        if meta['count'] > 0:
+            logger.info(f"{city_name:20s} | {meta['count']:>10,} images")
+
+    logger.info("-" * 80)
+    logger.info(f"{'TOTAL':20s} | {total_images:>10,} images")
+    logger.info("")
+    logger.info(f"Cities with data: {cities_with_data}/{len(cities_to_process)}")
+
+    # Estimate runtime based on benchmark performance
+    # Conservative estimates based on typical performance:
+    # - Download: 1-2 sec/image (async parallel)
+    # - ViT classification: 0.1 sec/image (GPU)
+    # - YOLO detection: 0.15 sec/image (GPU), but only on ~50% sunny images
+    # - Total: ~2-3 sec/image worst case, ~1-1.5 sec/image typical
+    images_per_second_conservative = 0.5  # Conservative estimate
+    images_per_second_typical = 1.0  # Typical with good GPU
+    images_per_second_optimistic = 2.0  # Best case scenario
+
+    estimated_hours_conservative = total_images / (images_per_second_conservative * 3600)
+    estimated_hours_typical = total_images / (images_per_second_typical * 3600)
+    estimated_hours_optimistic = total_images / (images_per_second_optimistic * 3600)
+
+    logger.info("")
+    logger.info("Runtime Estimates:")
+    logger.info("-" * 80)
+    logger.info(f"Conservative (0.5 img/sec): {estimated_hours_conservative:>6.1f} hours ({estimated_hours_conservative/24:>5.1f} days)")
+    logger.info(f"Typical (1.0 img/sec):      {estimated_hours_typical:>6.1f} hours ({estimated_hours_typical/24:>5.1f} days)")
+    logger.info(f"Optimistic (2.0 img/sec):   {estimated_hours_optimistic:>6.1f} hours ({estimated_hours_optimistic/24:>5.1f} days)")
+    logger.info("")
+    logger.info("Note: Estimates assume continuous processing with no interruptions")
+    logger.info("      Actual time may vary based on:")
+    logger.info("      - GPU performance (CUDA vs CPU)")
+    logger.info("      - Network speed for downloads")
+    logger.info("      - API rate limits")
+    logger.info("      - Sunny image percentage (affects YOLO workload)")
+    logger.info("=" * 80)
+    logger.info("")
+
+    return metadata_summary
 
 
 def main():
@@ -434,6 +589,8 @@ def main():
                        help='City names to process (default: all metro cities)')
     parser.add_argument('--test-mode', action='store_true',
                        help='Test mode: process only first 5 images per city to validate pipeline')
+    parser.add_argument('--skip-prefetch', action='store_true',
+                       help='Skip metadata prefetch phase (use existing metadata)')
 
     args = parser.parse_args()
 
@@ -444,14 +601,46 @@ def main():
     logger = setup_logging(base_output_dir)
     mly.set_access_token(MAPILLARY_TOKEN)
 
-    # Load pipeline (once for all cities)
+    # Header
     logger.info("=" * 80)
     logger.info("METRO CITIES SVI ANALYSIS PIPELINE")
     logger.info("For p(shade preference | temperature) analysis")
     if args.test_mode:
         logger.info("⚠ TEST MODE: Processing only 5 images per city for validation")
     logger.info("=" * 80)
-    logger.info("Initializing models...")
+    logger.info("")
+
+    # Filter cities if specified
+    cities_to_process = METRO_CITIES
+    if args.cities:
+        cities_to_process = [c for c in METRO_CITIES if c['name'] in args.cities]
+        logger.info(f"Selected cities: {[c['name'] for c in cities_to_process]}")
+    else:
+        logger.info(f"Processing all {len(cities_to_process)} metro cities")
+
+    logger.info("")
+
+    # PHASE 1: Prefetch all metadata and estimate runtime
+    if not args.skip_prefetch:
+        metadata_summary = prefetch_all_metadata(cities_to_process, base_output_dir, logger)
+
+        # Ask user to confirm before proceeding
+        if not args.test_mode:
+            logger.info("Press Ctrl+C to abort, or any key to continue...")
+            try:
+                input()
+            except KeyboardInterrupt:
+                logger.info("\nAborted by user")
+                return
+    else:
+        logger.info("Skipping metadata prefetch (using existing metadata)")
+        logger.info("")
+
+    # PHASE 2: Load models
+    logger.info("=" * 80)
+    logger.info("PHASE 2: MODEL INITIALIZATION")
+    logger.info("=" * 80)
+    logger.info("Loading ML models...")
 
     pipeline = SunnyShadePipeline(
         vit_model_path=args.vit_model,
@@ -460,17 +649,12 @@ def main():
     logger.info("✓ Models loaded")
     logger.info("")
 
-    # Filter cities if specified
-    cities_to_process = METRO_CITIES
-    if args.cities:
-        cities_to_process = [c for c in METRO_CITIES if c['name'] in args.cities]
-        logger.info(f"Processing selected cities: {[c['name'] for c in cities_to_process]}")
-    else:
-        logger.info(f"Processing all {len(cities_to_process)} metro cities")
-
+    # PHASE 3: Process all cities
+    logger.info("=" * 80)
+    logger.info("PHASE 3: IMAGE PROCESSING")
+    logger.info("=" * 80)
     logger.info("")
 
-    # Process cities sequentially
     all_stats = []
     overall_start = time.time()
 
@@ -495,23 +679,26 @@ def main():
     logger.info("=" * 80)
     logger.info("PIPELINE COMPLETE")
     logger.info("=" * 80)
-    logger.info(f"Total duration: {overall_duration/3600:.2f} hours")
+    logger.info(f"Total processing duration: {overall_duration/3600:.2f} hours")
     logger.info("")
     logger.info("City Summary:")
     logger.info("-" * 80)
 
     for stats in all_stats:
-        logger.info(f"{stats['city']:20s} | Images: {stats['total_images']:6d} | "
-                   f"Analyzed: {stats['analyzed']:6d} | Sunny: {stats['sunny']:5d} | "
-                   f"Time: {stats['duration_seconds']/60:6.1f}min")
+        rate = stats['analyzed'] / stats['duration_seconds'] if stats['duration_seconds'] > 0 else 0
+        logger.info(f"{stats['city']:20s} | Images: {stats['total_images']:>8,} | "
+                   f"Analyzed: {stats['analyzed']:>8,} | Sunny: {stats['sunny']:>6,} | "
+                   f"Time: {stats['duration_seconds']/60:>6.1f}min | Rate: {rate:>4.2f} img/s")
 
     total_images = sum(s['total_images'] for s in all_stats)
     total_analyzed = sum(s['analyzed'] for s in all_stats)
     total_sunny = sum(s['sunny'] for s in all_stats)
+    avg_rate = total_analyzed / overall_duration if overall_duration > 0 else 0
 
     logger.info("-" * 80)
-    logger.info(f"{'TOTAL':20s} | Images: {total_images:6d} | "
-               f"Analyzed: {total_analyzed:6d} | Sunny: {total_sunny:5d}")
+    logger.info(f"{'TOTAL':20s} | Images: {total_images:>8,} | "
+               f"Analyzed: {total_analyzed:>8,} | Sunny: {total_sunny:>6,} | "
+               f"Avg Rate: {avg_rate:>4.2f} img/s")
     logger.info("")
     logger.info(f"Output directory: {base_output_dir}")
     logger.info("=" * 80)
@@ -526,6 +713,7 @@ def main():
         'total_images': int(total_images),
         'total_analyzed': int(total_analyzed),
         'total_sunny': int(total_sunny),
+        'avg_processing_rate': float(avg_rate),
         'city_stats': all_stats
     }
 

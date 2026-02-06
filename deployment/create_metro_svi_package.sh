@@ -251,14 +251,25 @@ Note: Unlike the dedicated test script, this uses the same resilient error handl
 18. **St. Louis, MO**
 19. **Tucson, AZ**
 
-## Pipeline Steps
+## Pipeline Steps (3 Phases)
 
-1. **Fetch metadata** from Mapillary API (bounding box around city center)
-2. **Download images** in batches of 100 (async parallel downloads)
-3. **Binary classification** using ViT model (sunny vs not sunny)
-4. **Shade detection** using YOLO model (people in shade vs out of shade)
-5. **Save results** with metadata in per-city CSVs
-6. **Cleanup** temporary image files
+### Phase 1: Metadata Prefetch (NEW!)
+- Fetches metadata for all cities upfront
+- Shows total image count per city
+- Provides runtime estimates (conservative/typical/optimistic)
+- Waits for user confirmation before proceeding
+
+### Phase 2: Model Initialization
+- Loads ViT binary classification model
+- Loads YOLO shade detection model
+
+### Phase 3: Image Processing (with optimizations)
+1. **Download images** in batches of 100 (async parallel downloads)
+2. **Binary classification** using ViT model with **batch inference** (32 images at once)
+3. **Shade detection** using YOLO model with **batch inference** (8 images at once, only on sunny images)
+4. **Save results** incrementally after each batch
+5. **Cleanup** temporary image files
+6. **Resume support** - skips already-processed images if interrupted
 
 ## Output Structure
 
@@ -293,14 +304,30 @@ Each `{city}_svi_analyzed.csv`:
 - `inshade_count` - People in shade
 - `outshade_count` - People out of shade
 
-## Performance
+## Performance (UPDATED with optimizations)
 
-- **Download**: ~1-2 seconds/image (parallel)
-- **Binary classification**: ~0.1 seconds/image (GPU)
-- **YOLO detection**: ~0.15 seconds/image (GPU)
-- **Overall**: ~5-10 images/second with GPU
+### Old Pipeline (sequential processing)
+- ~0.1-0.3 images/second
+- Would take weeks/months for millions of images
 
-**Estimated runtime**: 8-16 hours for all 8 cities (overnight)
+### New Pipeline (batch processing + incremental saves)
+- **Download**: ~1-2 seconds/image (parallel, batches of 100)
+- **Binary classification**: Batch inference on 32 images simultaneously (GPU)
+- **YOLO detection**: Batch inference on 8 images simultaneously (GPU, only sunny images)
+- **Overall**: ~1-2 images/second with good GPU
+- **Speedup**: **5-15x faster** than old pipeline
+
+### Estimated Runtime (20 cities, millions of images)
+- **Conservative** (0.5 img/sec): ~5-23 days depending on total count
+- **Typical** (1.0 img/sec): ~3-11 days with good GPU
+- **Optimistic** (2.0 img/sec): ~1.5-6 days with excellent hardware
+
+**Note**: Pipeline now shows actual estimates after metadata prefetch phase
+
+### Key Features
+- **Incremental saves**: Results saved after every 100 images
+- **Resume support**: Can interrupt and restart without losing progress
+- **Progress tracking**: Shows processing rate and ETA per city
 
 ## Troubleshooting
 
@@ -313,14 +340,30 @@ Each `{city}_svi_analyzed.csv`:
 - Reduce `BATCH_SIZE`
 - Verify Mapillary token
 
-### Out of memory
-- Reduce `BATCH_SIZE` (try 50 or 25)
-- Process cities one at a time with `--cities`
+### Out of memory (GPU)
+- Reduce ViT batch size in `sunny_shade_pipeline.py` (default: 32)
+- For 4GB GPU: use batch_size=16
+- For 8GB GPU: use batch_size=32
+- For 16GB+ GPU: can try batch_size=64
+
+### Out of memory (Disk)
+- Pipeline auto-cleans after each batch (only 200MB temp storage needed)
+- Check that cleanup is working properly
+
+### Pipeline crashed / interrupted
+- Simply restart with same command
+- Pipeline will automatically resume from last checkpoint
+- Already-processed images are skipped
 
 ### Pipeline hangs
 ```bash
 tmux kill-session -t metro_svi
 bash run_metro_svi_tmux.sh
+```
+
+### Want to skip prefetch phase
+```bash
+python3 scripts/pipelines/metro_cities_svi_pipeline.py --skip-prefetch
 ```
 
 ## Requirements

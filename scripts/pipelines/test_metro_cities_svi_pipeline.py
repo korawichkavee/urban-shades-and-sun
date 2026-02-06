@@ -80,10 +80,10 @@ def test_city_limited(city_config, output_dir, pipeline, logger, max_images=5):
         logger.error("FAILED: No images downloaded")
         return False
 
-    # Step 3: Test analysis
-    logger.info("Testing sunny/shade analysis...")
+    # Step 3: Test analysis (using optimized batch method)
+    logger.info("Testing sunny/shade analysis with batch inference...")
     try:
-        results = pipeline.process_folder(images_dir, output_csv=None)
+        results = pipeline.process_folder_batch(images_dir, output_csv=None)
         logger.info(f"Analysis results: {len(results)} images processed")
 
         if 'is_sunny' in results.columns:
