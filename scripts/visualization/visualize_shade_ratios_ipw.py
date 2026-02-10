@@ -495,13 +495,11 @@ def load_city_data(data_dir):
     """Load all city CSV files with UTCI data - same pattern as visualize_shade_ratios.py"""
     data_dir = Path(data_dir)
 
-    # Load files with *_with_utci.csv pattern (same as original script)
-    city_files = list(data_dir.glob("*_with_utci.csv"))
+    # Load files with *_with_utci.csv pattern, searching recursively
+    city_files = list(data_dir.glob("**/*_with_utci.csv"))
 
     if len(city_files) == 0:
         print(f"Warning: No *_with_utci.csv files found in {data_dir}")
-        print("Falling back to all CSV files...")
-        city_files = list(data_dir.glob("**/*.csv"))
 
     print(f"Found {len(city_files)} city files with UTCI data")
 
@@ -538,8 +536,18 @@ def load_city_data(data_dir):
 
 
 def main():
-    data_dir = "data/processed/city_estimate_outcomes"
-    output_dir = Path("outputs/plots/ipw_weighted")
+    import argparse
+    parser = argparse.ArgumentParser(description='IPW shade ratio analysis for metro SVI data')
+    parser.add_argument('--data-dir', type=str,
+                        default='data/processed/city_estimate_outcomes',
+                        help='Directory containing *_with_utci.csv files (searched recursively)')
+    parser.add_argument('--output-dir', type=str,
+                        default='outputs/plots/ipw_weighted',
+                        help='Directory to save plots')
+    args = parser.parse_args()
+
+    data_dir = args.data_dir
+    output_dir = Path(args.output_dir)
 
     # Create output directory
     output_dir.mkdir(parents=True, exist_ok=True)

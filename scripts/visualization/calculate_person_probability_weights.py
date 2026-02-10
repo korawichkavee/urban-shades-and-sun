@@ -141,8 +141,7 @@ def prepare_data_with_weights(all_data):
     combined_df['person_count'] = inshade + outshade
     combined_df['has_person'] = (combined_df['person_count'] > 0).astype(int)
 
-    # Use dbulb as temperature, fall back to utci_C
-    combined_df['temperature'] = combined_df['dbulb'].fillna(combined_df['utci_C'])
+    combined_df['temperature'] = combined_df['utci_C']
 
     # Remove rows with missing critical data
     combined_df = combined_df.dropna(subset=['temperature', 'hour']).copy()
