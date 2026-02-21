@@ -14,6 +14,14 @@ The IPW adjustment estimates what the shade ratio *would be* if the same populat
 
 ## The Adjustment
 
+### Motivation: Selection Bias Differs by Direction
+
+The key insight is that people avoid going outside for **different reasons** at different temperatures, and this creates asymmetric selection bias in who we observe:
+
+- **Below baseline temperature**: people stay home *because it's cold*. Those who still walk are less cold-averse and generally less temperature-sensitive — they are *not* representative of how the general population would behave in shade if forced outside. The observed shade ratio at cold temperatures **overstates** the population's shade preference, so we correct *downward*.
+
+- **Above baseline temperature**: people stay home *because it's hot*. Those who brave the heat are a self-selected group who may be more heat-adapted and less likely to actively seek shade than the general population would be. The observed shade ratio at hot temperatures **understates** the population's shade preference, so we correct *upward*.
+
 ### Walk Trip Rate as Outdoor Probability
 
 We use walk trips per person-day as a proxy for P(outside | temperature T):
@@ -33,17 +41,16 @@ From the travel survey data (described below), this function varies with tempera
 
 The overall mean across the dataset is **2.00 walk trips per person-day**.
 
-### IPW Weight Calculation
+### Asymmetric IPW Weight Calculation
 
-For each street view image observation at temperature T:
+For each street view image observation at temperature T, with baseline temperature `B = 20°C`:
 
 ```
-ipw(T) = λ(baseline) / λ(T)
+T < B:   ipw(T) = λ(T) / λ(B)    →  weight < 1  (downweight cold-temp observations)
+T ≥ B:   ipw(T) = λ(B) / λ(T)    →  weight ≥ 1  (upweight hot-temp observations)
 ```
 
-where `baseline = 20°C` (a mild, representative temperature). This:
-- **Upweights** observations at temperatures where fewer people go outside (cold winters, extreme heat)
-- **Downweights** observations at mild temperatures where pedestrian activity is highest
+Both branches equal exactly 1.0 at the baseline temperature. This differs from a symmetric IPW approach (which would upweight both cold and hot tails equally) by encoding the directional reasoning: cold-temperature walkers are a *different* kind of selection bias from hot-temperature walkers.
 
 Weights are normalized to mean = 1 and capped at the 95th percentile to prevent extreme leverage from the temperature tails where survey data is sparse.
 
@@ -62,7 +69,7 @@ For the IPW-adjusted model, each observation's effective count is scaled by its 
 effective_weight = ipw(T) × n_total
 ```
 
-This is passed as `freq_weights` to the binomial GLM. The fitted curve then represents shade preference as if outdoor activity were uniform across temperatures.
+This is passed as `freq_weights` to the binomial GLM. The fitted curve then represents shade preference corrected for the directional selection bias at each temperature.
 
 ---
 
@@ -95,14 +102,14 @@ The dataset spans **19 years** (1988–2007) and covers a broad range of US clim
 
 ### Scale
 
-After filtering to temperature bins with ≥ 100 person-days and UTCI between −15°C and 40°C:
+After filtering to UTCI between −15°C and 40°C:
 
 - **174,027** person-days
 - **767,483** total trips
 - **347,865** walk trips
 - **2.00** walk trips per person-day overall
 
-Walk rates were binned by UTCI in 5°C intervals, then linearly interpolated to produce a smooth function λ(T). Rates at extreme temperatures (> 40°C UTCI) drop sharply due to data sparsity and are clipped to a minimum of 0.1 to avoid infinite weights.
+Walk rates were binned by UTCI in 5°C intervals. For the **pooled** function, bins with ≥ 100 person-days are retained. For **per-city** functions, the threshold is ≥ 25 person-days — sufficient for most cities given per-city sample sizes (see table below). Rates are then linearly interpolated to produce a smooth function λ(T). Rates at extreme temperatures (> 40°C UTCI) drop sharply due to data sparsity and are clipped to a minimum of 0.1 to avoid infinite weights.
 
 ### UTCI Annotation
 
@@ -140,7 +147,25 @@ Images were filtered to commute hours (8–10 am and 4–6 pm local time) and cl
 Travel surveys are from **1988–2007**; street view images are from **2014–2023**. Walking behavior and infrastructure have changed in that period. We assume the *relative* effect of temperature on outdoor activity (the shape of λ(T)) is stable over time, even if absolute rates differ.
 
 ### Geographic mismatch
-The surveys cover US metro areas. The SVI cities overlap partially (atlanta, cleveland, columbia, evansville, minneapolis, st.-louis, tucson) but not fully (anchorage, boise, denver, honolulu, louisville, salt-lake-city have no matching survey). We assume the temperature-walk rate relationship generalizes across US cities.
+The IPW adjustment now uses **per-city walk rate functions** where a matching survey exists, falling back to the pooled function otherwise. The mapping and coverage are:
+
+| SVI city | Matched survey metro | Person-days | Usable bins (≥25 person-days) | Temperature range covered | Notes |
+|---|---|---|---|---|---|
+| atlanta | atlanta | 29,274 | 5 | 7.5–27.5°C | Good warm-season coverage |
+| st.-louis | saint-louis | 6,422 | 8 | −7.5–27.5°C | Best cross-season coverage of matched cities |
+| tucson | tucson | 4,310 | 5 | 17.5–37.5°C | Good hot-season coverage |
+| minneapolis | minneapolis-st-paul | 12,384 | 4 | −7.5–7.5°C | Cold-biased; extrapolates flat above 7.5°C |
+| evansville | evansville | 4,170 | 3 | 27.5–37.5°C | Warm-biased; narrow range |
+| cleveland | cleveland | 2,451 | 3 | 12.5–22.5°C | Narrow mild range |
+| columbia | columbia-sc | 2,317 | 2 | 12.5–17.5°C | Very narrow; minimal slope information |
+| honolulu | oahu | 296 | 3 | 17.5–27.5°C | Small sample; near-isothermal range |
+| denver | colorado-north-front-range | 25 | 0 | — | Too sparse; **falls back to pooled** |
+| anchorage | — | — | — | — | No survey; falls back to pooled |
+| boise | — | — | — | — | No survey; falls back to pooled |
+| louisville | — | — | — | — | No survey; falls back to pooled |
+| salt-lake-city | — | — | — | — | No survey; falls back to pooled |
+
+Cities with few bins (2–3) have limited slope information across the temperature range. Their λ(T) functions extrapolate as flat lines outside the surveyed range, which reduces (but does not eliminate) the benefit over pooled. The pooled function is retained as the fallback for cities with no usable per-city data.
 
 ### Coordinate resolution
 Survey trip coordinates are at zip or county centroid level. UTCI values therefore represent area-level conditions rather than exact trip locations. For the purpose of computing walk rates by temperature bin, this is a minor source of noise.
@@ -158,14 +183,23 @@ The current implementation applies temperature-only IPW weights. The imagery is 
 
 ## Interpretation
 
-The two fitted curves in the output plot answer different questions:
+The two fitted curves in the output plots answer different questions:
 
 | Curve | Question answered |
 |---|---|
 | **Unweighted** | Among pedestrians visible in sunny commute-hour images, what fraction chose shade at temperature T? |
-| **IPW-adjusted** | What fraction *would* choose shade at temperature T if the same population were equally likely to be outside at all temperatures? |
+| **IPW-adjusted** | What fraction *would* choose shade at temperature T, corrected for who self-selects to be outside? |
 
-If the IPW curve lies **above** the unweighted curve at extreme temperatures, it means people who brave extreme conditions are less likely to seek shade than the general population would be — i.e. the observed shade ratio understates the behavioral preference for shade at those temperatures.
+**Expected direction of adjustment:**
+
+- At **cold temperatures** the IPW curve should lie *below* the unweighted curve. Cold-weather walkers are a self-selected hardy group whose shade behavior overstates the general population's preference. The correction pulls the curve down.
+- At **hot temperatures** the IPW curve should lie *above* the unweighted curve. People who stay inside when it's hot would, if forced outside, be more likely to seek shade than those who brave the heat voluntarily. The correction pulls the curve up.
+
+The net effect is a steeper positive slope in the IPW-adjusted curve: shade preference rises more sharply with temperature once the directional selection bias is removed.
+
+### Seasonal plots
+
+Per-city seasonal plots (`per_city_season/`) show the same two curves split by season (Winter/Spring/Summer/Fall, ≥50 obs required per season). These are useful for checking whether the IPW adjustment behaves consistently across seasons, and for identifying cities where shade preference varies strongly with season independent of temperature.
 
 ---
 
@@ -173,7 +207,9 @@ If the IPW curve lies **above** the unweighted curve at extreme temperatures, it
 
 | File | Purpose |
 |---|---|
-| `data/transit_surveys/processed/p_walk_given_temp_final.csv` | Walk trip rates by UTCI bin |
+| `data/transit_surveys/processed/p_walk_given_temp_final.csv` | Pooled walk trip rates by UTCI bin |
+| `data/transit_surveys/processed/person_day_trip_rates.csv` | Per-person-day trip data used for per-city walk rate functions |
+| `data/transit_surveys/processed/survey_locations.csv` | Survey → metro_area mapping |
 | `scripts/travel_surveys/plot_p_walk_given_temp.py` | Walk rate visualization |
 | `scripts/processing/add_utci_to_metro_svi.py` | Adds UTCI to analyzed SVI CSVs |
 | `scripts/visualization/visualize_metro_svi_shade_ipw.py` | Produces IPW shade preference plot |

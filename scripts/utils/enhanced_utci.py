@@ -178,12 +178,13 @@ def get_enhanced_utci_data(lat, lon, timestamp) -> Dict:
     if temps and dews and winds:
         Ta_C = temps[idx]
         Td_C = dews[idx]
-        Va = winds[idx]
+        # Open-Meteo ERA5 returns wind_speed_10m in km/h; thermofeel expects m/s
+        Va_ms = winds[idx] / 3.6
 
-        utci_K, utci_C = _calculate_utci_from_met(Ta_C, Td_C, Va)
+        utci_K, utci_C = _calculate_utci_from_met(Ta_C, Td_C, Va_ms)
         result['utci_K'] = utci_K
         result['utci_C'] = utci_C
-        result['wind_speed_10m'] = Va
+        result['wind_speed_10m'] = Va_ms
         result['temperature_2m'] = Ta_C
         result['dewpoint_2m'] = Td_C
 
