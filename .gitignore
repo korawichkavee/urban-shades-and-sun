@@ -23,3 +23,9 @@ config/config.json
 # Exploratory directories (archived)
 utci_latlon/
 salus_shadow/
+
+# Archive directory
+sunny_day_svi_archive/
+
+# ML model files
+*.pth
