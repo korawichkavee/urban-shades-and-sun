@@ -1,236 +1,636 @@
-# Sunny Day SVI Documentation
+# Urban Shade Preference Analysis: NYC and Seattle
 
-Complete documentation for the Sunny Day Street View Imagery (SVI) analysis project.
+Analysis of shade-seeking behavior in New York City and Seattle using street view imagery, thermal comfort metrics, and mobility survey data.
 
-## Quick Links
+**Publication Package** | **Replication-Ready** | **NYC & Seattle Focus**
 
-- **[Getting Started](01_GETTING_STARTED.md)** - Project overview and setup
-- **[Data Collection](02_DATA_COLLECTION.md)** - Downloading SVI data
-- **[Processing](03_PROCESSING.md)** - Weather enrichment and UTCI
-- **[Machine Learning](04_MACHINE_LEARNING.md)** - YOLO and classification models
-- **[Visualization](05_VISUALIZATION.md)** - Generating plots and figures
-- **[Pipelines](06_PIPELINES.md)** - End-to-end workflows
-- **[Notebooks](07_NOTEBOOKS.md)** - Jupyter notebook guide
+---
 
-## Additional Resources
+## Overview
 
-- **[Project Structure](../PROJECT_STRUCTURE.md)** - Directory organization
-- **[Weather Processing](WEATHER_PROCESSING_README.md)** - Overnight processing guide
-- **[Forecast Data Note](FORECAST_DATA_NOTE.md)** - Historical forecast data (future work)
-- **[Agent Instructions](AGENTS.md)** - Guidelines for AI assistant collaboration
+This repository contains the complete analysis pipeline for measuring how urban heat influences shade-seeking behavior using:
+- **Street View Imagery**: Mapillary imagery across NYC and Seattle
+- **Shadow Detection**: Machine learning-based shadow and people detection
+- **Thermal Comfort**: UTCI (Universal Thermal Climate Index) calculations
+- **Mobility Data**: NYC Citywide Mobility Survey 2022 and Seattle Household Travel Survey
+- **Statistical Methods**: Inverse Probability Weighting (IPW) for bias correction
 
-## Documentation Map
+### Key Findings
 
-### By Task
+Analysis of shade preference patterns across thermal comfort conditions, accounting for:
+- Seasonal sampling bias
+- Temperature confounding
+- Shadow ratio effects on pedestrian behavior
 
-| Task | Documents |
-|------|-----------|
-| I want to get started | [Getting Started](01_GETTING_STARTED.md) |
-| I want to download new cities | [Data Collection](02_DATA_COLLECTION.md) |
-| I want to add weather/UTCI data | [Processing](03_PROCESSING.md) |
-| I want to train ML models | [Machine Learning](04_MACHINE_LEARNING.md) |
-| I want to make plots | [Visualization](05_VISUALIZATION.md) |
-| I want to run the full pipeline | [Pipelines](06_PIPELINES.md) |
-| I want to do exploratory analysis | [Notebooks](07_NOTEBOOKS.md) |
+---
 
-## Key Concepts
+## Repository Structure
 
-### UTCI (Universal Thermal Climate Index)
-Comprehensive thermal comfort measure that accounts for:
-- Air temperature
-- Humidity
-- Wind speed
-- Solar radiation
+```
+├── data/                           # Analysis datasets (1.8 GB)
+│   ├── final_datasets/            # NYC & Seattle final analysis data (903 MB)
+│   │   ├── nyc/                   # NYC final datasets with IPW corrections
+│   │   └── seattle/               # Seattle final datasets with IPW corrections
+│   ├── mobility_surveys/          # Travel survey data + UTCI annotations (281 MB)
+│   │   ├── nyc/                   # NYC 2022 Citywide Mobility Survey
+│   │   └── seattle/               # Seattle Household Travel Survey
+│   ├── vit_training_dataset/      # Binary classification training (444 MB)
+│   ├── yolo_training_dataset/     # Object detection training (195 MB)
+│   ├── city_boundaries/           # NYC & Seattle geographic boundaries (2.2 MB)
+│   └── geographic_lookups/        # ZIP/county centroids (904 KB)
+│
+├── models/                         # Machine learning models (110 MB)
+│   └── yolo_best.pt               # YOLO v11 people detection model
+│
+├── scripts/                        # Analysis pipeline (3.0 MB, 103 scripts)
+│   ├── analysis/                  # Statistical analysis (12 scripts)
+│   ├── processing/                # Data enrichment (23 scripts)
+│   ├── visualization/             # Publication plots (32 scripts)
+│   ├── ml/                        # Model training (14 scripts)
+│   ├── pipelines/                 # End-to-end workflows (7 scripts)
+│   ├── data_collection/           # SVI download (9 scripts)
+│   └── utils/                     # Helper functions (6 scripts)
+│
+├── outputs/                        # Results and figures (108 MB)
+│   ├── plots/                     # Publication-ready visualizations (101 MB)
+│   └── analysis/                  # Statistical results and reports (7 MB)
+│
+├── docs/                           # Documentation (69 MB, 64 files)
+│   ├── 01_GETTING_STARTED.md      # Project setup and overview
+│   ├── 02_DATA_COLLECTION.md      # SVI data download guide
+│   ├── 03_PROCESSING.md           # Weather/UTCI enrichment
+│   ├── 04_MACHINE_LEARNING.md     # Model training guide
+│   ├── 05_VISUALIZATION.md        # Plotting workflows
+│   ├── 06_PIPELINES.md            # End-to-end pipelines
+│   └── [Analysis guides]          # IPW, seasonal bias, diagnostics
+│
+├── nyc_seattle_municipal_deployment/  # Self-contained deployment package (717 MB)
+│   ├── scripts/                   # Municipal shadow analysis pipeline
+│   ├── docs/                      # Deployment guides
+│   └── [pipeline files]           # Ready-to-run workflows
+│
+├── notebooks/                      # Jupyter notebooks (4.2 MB)
+│   └── [Exploratory analysis]     # Interactive analysis notebooks
+│
+└── tests/                          # Test suite (120 KB)
+    └── [Unit tests]               # Code validation tests
+```
 
-More accurate than simple temperature for understanding heat stress.
+---
 
-### Shade-Seeking Behavior
-Measured as the ratio of people in shade to total people detected in an image. Analyzed against temperature to understand behavioral responses to heat.
+## Quick Start
 
-### Hot Cities Dataset
-Cities with:
-- ≥10 days with temperature >30°C
-- Population >200,000
-- Sufficient Mapillary coverage
+### Prerequisites
 
-### Processing Pipeline
-1. **Download** → Raw SVI metadata
-2. **Filter** → Hot days, walkable streets
-3. **Enrich** → Weather data, UTCI
-4. **Classify** → Sunny vs cloudy (ML)
-5. **Detect** → People and shadows (YOLO)
-6. **Analyze** → Shade ratios, statistics
-7. **Visualize** → Plots and figures
+```bash
+# Python 3.10+ required
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### Core Dependencies
+
+- **Data Processing**: `pandas`, `geopandas`, `numpy`
+- **Machine Learning**: `torch`, `ultralytics`, `transformers`
+- **Visualization**: `matplotlib`, `seaborn`, `plotly`
+- **Weather/Climate**: `thermofeel` (UTCI calculations), `requests`
+- **Geospatial**: `osmnx`, `shapely`
+
+### Running the Analysis
+
+```bash
+# 1. Annotate mobility survey trips with UTCI
+python scripts/analysis/annotate_trips_with_utci.py
+
+# 2. Analyze walking behavior vs UTCI
+python scripts/analysis/analyze_walking_vs_utci.py
+
+# 3. Generate publication plots
+python scripts/visualization/plot_utci_shade_preference_final.py
+python scripts/visualization/plot_binned_estimates.py
+python scripts/visualization/plot_ipw_smooth_curves.py
+
+# 4. Create cross-city comparison
+python scripts/visualization/plot_cross_city_statistical_comparison.py
+```
+
+---
+
+## Data Description
+
+### Final Datasets
+
+**NYC** (`data/final_datasets/nyc/`):
+- `new-york-city_final_analysis_with_ipw_revised.csv` (105 MB)
+  - IPW-corrected shade preference with seasonal + shadow ratio adjustments
+- `new-york-city_final_analysis_with_seasonal_and_temp.csv` (119 MB)
+  - Triple IPW: seasonal + temperature + shadow ratio corrections
+
+**Seattle** (`data/final_datasets/seattle/`):
+- `seattle_final_analysis_with_ipw_revised.csv` (319 MB)
+  - IPW-corrected shade preference
+- `seattle_final_analysis_with_seasonal_and_temp.csv` (361 MB)
+  - Triple IPW corrections
+
+### Key Variables
+
+**Street View Data**:
+- `image_id`: Mapillary image identifier
+- `lat`, `lon`: Geographic coordinates
+- `captured_at`: Image timestamp
+- `camera_type`: Device used for capture
+- `compass_angle`: Heading direction
+
+**Shadow Metrics**:
+- `shadow_ratio`: Proportion of image in shadow (YOLO-detected)
+- `people_count`: Number of people detected
+- `people_in_shade`: Count of people in shadowed areas
+- `shade_preference`: Ratio of people in shade / total people
+
+**Thermal Comfort**:
+- `utci`: Universal Thermal Climate Index (°C)
+- `temperature_2m`: Air temperature
+- `relative_humidity_2m`: Humidity (%)
+- `wind_speed_10m`: Wind speed (m/s)
+- `surface_solar_radiation`: Solar radiation (W/m²)
+
+**IPW Weights**:
+- `seasonal_weight`: Corrects for temporal sampling bias
+- `temp_weight`: Corrects for temperature confounding
+- `sr_weight`: Corrects for shadow ratio propensity
+- `combined_weight`: Product of all three weights
+
+### Mobility Survey Data
+
+**NYC** (`data/mobility_surveys/nyc/`):
+- Survey: 2022 NYC Citywide Mobility Survey (52 MB)
+- UTCI-annotated trips: `nyc_trips_with_utci.csv` (40 MB)
+
+**Seattle** (`data/mobility_surveys/seattle/`):
+- Survey: Puget Sound Household Travel Survey (133 MB)
+- UTCI-annotated trips: `seattle_trips_with_utci.csv` (58 MB)
+
+---
+
+## Scripts Overview
+
+### Analysis Scripts (12 files)
+
+| Script | Purpose |
+|--------|---------|
+| `analyze_walking_vs_utci.py` | Walking mode choice vs thermal comfort |
+| `annotate_trips_with_utci.py` | Add UTCI to mobility survey trips |
+| `investigate_curve_patterns.py` | Analyze shade preference curve shapes |
+| `seasonal_bias_filtering_stages.py` | Multi-stage bias correction analysis |
+| `sr_ipw_investigation.py` | Shadow ratio IPW diagnostics |
+| `filter_utci_by_wind.py` | Wind speed sensitivity analysis |
+
+### Processing Scripts (23 files)
+
+| Script | Purpose |
+|--------|---------|
+| `add_shadow_to_final_cities.py` | Shadow annotation using YOLO |
+| `add_shadow_to_final_cities_optimized.py` | Faster shadow detection |
+| `add_utci_to_final_cities.py` | UTCI calculation from weather data |
+| `apply_triple_ipw_final_cities.py` | Apply IPW corrections |
+| `apply_triple_ipw_final_cities_revised.py` | Revised IPW with diagnostics |
+| `apply_seasonal_reweighting.py` | Seasonal bias correction |
+| `add_weather_data.py` | ERA5 weather enrichment |
+
+### Visualization Scripts (32 files)
+
+| Script | Purpose |
+|--------|---------|
+| `plot_utci_shade_preference_final.py` | Main shade preference curves |
+| `plot_binned_estimates.py` | Binned shade preference with CIs |
+| `plot_ipw_smooth_curves.py` | Smoothed IPW-corrected curves |
+| `plot_cross_city_statistical_comparison.py` | NYC vs Seattle comparison |
+| `plot_seasonal_bootstrap_comparison.py` | Seasonal adjustment effects |
+| `plot_data_quality_diagnostics.py` | Sample size & coverage diagnostics |
+| `plot_weight_distributions.py` | IPW weight diagnostics |
+| `plot_residual_diagnostics.py` | Model residual analysis |
+
+### Machine Learning Scripts (14 files)
+
+| Script | Purpose |
+|--------|---------|
+| `binary_image_classification.py` | ViT sunny/cloudy classifier training |
+| `yolo_train_portable.py` | YOLO people detection training |
+| `evaluate_yolo_model.py` | Model performance evaluation |
+| `generate_annotated_samples.py` | Create visualization samples |
+
+---
+
+## Key Methodologies
+
+### 1. Shadow Detection
+
+**Models**:
+- **YOLO v11**: Detects people and shadows in street view images
+- **Vision Transformer (ViT)**: Binary classifier for sunny vs cloudy conditions
+
+**Pipeline**:
+1. Load Mapillary street view image
+2. Run YOLO inference to detect people bounding boxes
+3. Segment shadow regions using threshold-based detection
+4. Calculate overlap between people and shadows
+5. Compute `shade_preference = people_in_shade / total_people`
+
+### 2. UTCI Calculation
+
+**Universal Thermal Climate Index** integrates:
+- Air temperature (°C)
+- Relative humidity (%)
+- Wind speed (m/s)
+- Mean radiant temperature (from solar radiation)
+
+**Data Sources**:
+- ERA5 reanalysis: Hourly historical weather (1940-present)
+- Open-Meteo API: High-resolution climate data
+- Thermofeel Python package: UTCI calculation implementation
+
+### 3. Inverse Probability Weighting (IPW)
+
+**Purpose**: Correct for non-random sampling biases
+
+**Three-Stage Correction**:
+
+1. **Seasonal Weight**: Corrects temporal sampling bias
+   ```
+   P(photo | month, day_of_week) → seasonal_weight
+   ```
+
+2. **Temperature Weight**: Corrects temperature confounding
+   ```
+   P(photo | utci_bin, season) → temp_weight
+   ```
+
+3. **Shadow Ratio Weight**: Corrects shadow ratio propensity
+   ```
+   P(photo | shadow_ratio_bin, utci) → sr_weight
+   ```
+
+**Combined Weight**:
+```
+combined_weight = seasonal_weight × temp_weight × sr_weight
+```
+
+**Implementation**: See `scripts/processing/apply_triple_ipw_final_cities_revised.py`
+
+### 4. Statistical Analysis
+
+**Binned Estimates**:
+- UTCI binned into 2°C intervals
+- Weighted means with 95% confidence intervals
+- Bootstrap resampling for uncertainty quantification
+
+**Smooth Curves**:
+- Lowess smoothing with IPW-weighted observations
+- Cross-validation for bandwidth selection
+- Comparison across correction stages
+
+---
+
+## Outputs
+
+### Publication Plots
+
+Located in `outputs/plots/`:
+
+**Main Results**:
+- `shade_behavior/` - Shade preference vs UTCI curves
+- `ipw_weighted/` - IPW-corrected comparisons
+- `commute_hours/` - Commute time filtering effects
+
+**Diagnostics**:
+- `people_count/` - Sample size distributions
+- `temperature_comparison/` - UTCI vs dry bulb comparison
+- Data quality plots in `outputs/analysis/figures/`
+
+### Analysis Results
+
+Located in `outputs/analysis/`:
+
+**Statistical Outputs**:
+- `utci_shade_preference_curves.pdf` - Main publication figure
+- `figures/` - Individual diagnostic plots (PDF format)
+- `WALKING_UTCI_ANALYSIS.md` - Mobility survey results
+
+**Summary Statistics**:
+- `data/final_datasets/{city}/{city}_ipw_revised_summary_stats.csv`
+- Binned estimates with confidence intervals
+- Sample sizes per UTCI bin
+
+---
+
+## Machine Learning Models
+
+### YOLO People Detection
+
+**Model**: `models/yolo_best.pt` (110 MB)
+- Architecture: YOLO v11s
+- Task: Detect people and shadows in street view images
+- Training: 195 MB custom dataset (`data/yolo_training_dataset/`)
+- Performance: See `docs/END_TO_END_ACCURACY_ANALYSIS.md`
+
+### ViT Binary Classifier
+
+**Model**: `vit_binary.pth` (**Not in repository** - see below)
+- Architecture: Vision Transformer
+- Task: Binary classification (sunny vs cloudy)
+- Training: 444 MB dataset (`data/vit_training_dataset/`)
+  - 843 sunny images
+  - 577 not_sunny images
+- Training script: `scripts/ml/binary_image_classification.py`
+
+**Note**: Model file (328 MB) excluded from repository due to GitHub size limits.
+Will be available via Hugging Face Hub: [link to be added]
+
+---
+
+## Replication Guide
+
+### Full Pipeline
+
+1. **Setup Environment**
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+   ```
+
+2. **Download ViT Model** (when available)
+   ```bash
+   # To be added: Hugging Face download instructions
+   # Place in models/vit_binary.pth
+   ```
+
+3. **Verify Data**
+   ```bash
+   # Check final datasets exist
+   ls data/final_datasets/nyc/
+   ls data/final_datasets/seattle/
+
+   # Check mobility surveys
+   ls data/mobility_surveys/*/
+   ```
+
+4. **Run Analysis**
+   ```bash
+   # Annotate trips with UTCI
+   python scripts/analysis/annotate_trips_with_utci.py
+
+   # Analyze walking patterns
+   python scripts/analysis/analyze_walking_vs_utci.py
+
+   # Generate all publication plots
+   python scripts/visualization/plot_utci_shade_preference_final.py
+   python scripts/visualization/plot_binned_estimates.py
+   python scripts/visualization/plot_ipw_smooth_curves.py
+   python scripts/visualization/plot_seasonal_bootstrap_comparison.py
+   python scripts/visualization/plot_cross_city_statistical_comparison.py
+   ```
+
+5. **Review Outputs**
+   ```bash
+   # Check plots
+   ls outputs/plots/shade_behavior/
+   ls outputs/plots/ipw_weighted/
+
+   # Check analysis results
+   ls outputs/analysis/figures/
+   ```
+
+### Processing New Cities (Advanced)
+
+See `docs/02_DATA_COLLECTION.md` and `docs/03_PROCESSING.md` for:
+- Mapillary API data download
+- Weather data enrichment
+- Shadow annotation pipeline
+- IPW weight calculation
+
+---
+
+## Documentation
+
+### Getting Started
+- **[01_GETTING_STARTED.md](docs/01_GETTING_STARTED.md)** - Project overview, setup, and workflows
+- **[PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)** - Complete directory structure
+- **[PHASE_3_COMPLETE.md](PHASE_3_COMPLETE.md)** - Repository organization details
+
+### Data Collection & Processing
+- **[02_DATA_COLLECTION.md](docs/02_DATA_COLLECTION.md)** - Mapillary SVI download
+- **[03_PROCESSING.md](docs/03_PROCESSING.md)** - Weather and UTCI enrichment
+- **[WEATHER_PROCESSING_README.md](docs/WEATHER_PROCESSING_README.md)** - Overnight processing guide
+
+### Machine Learning
+- **[04_MACHINE_LEARNING.md](docs/04_MACHINE_LEARNING.md)** - Model training workflows
+- **[END_TO_END_ACCURACY_ANALYSIS.md](docs/END_TO_END_ACCURACY_ANALYSIS.md)** - Model evaluation
+
+### Analysis Methods
+- **[IPW_RESULTS_INTERPRETATION.md](docs/IPW_RESULTS_INTERPRETATION.md)** - IPW methodology
+- **[IPW_ADJUSTMENT_REVIEW_AND_CRITICAL_BUG.md](docs/IPW_ADJUSTMENT_REVIEW_AND_CRITICAL_BUG.md)** - Correction details
+- **[SEASONAL_ADJUSTMENT_SUMMARY.md](docs/SEASONAL_ADJUSTMENT_SUMMARY.md)** - Temporal bias correction
+- **[WEIGHT_DIAGNOSTICS_REVISED.md](docs/WEIGHT_DIAGNOSTICS_REVISED.md)** - IPW diagnostics
+
+### Visualization
+- **[05_VISUALIZATION.md](docs/05_VISUALIZATION.md)** - Plotting workflows
+- **[BINNED_SAMPLE_SIZE_SUMMARY.md](docs/BINNED_SAMPLE_SIZE_SUMMARY.md)** - Sample size details
+
+### Workflows
+- **[06_PIPELINES.md](docs/06_PIPELINES.md)** - End-to-end pipelines
+- **[07_NOTEBOOKS.md](docs/07_NOTEBOOKS.md)** - Jupyter notebook guide
+
+---
 
 ## Project Statistics
 
-- **Cities Analyzed**: 20+
-- **Total Images**: ~234,000
-- **Temperature Measures**: 3 (wet bulb, dry bulb, UTCI)
-- **ML Models**: 2 (binary classifier, YOLO detector)
-- **Visualizations**: 19 publication-ready plots
+### Data Coverage
+- **Cities**: New York City, Seattle
+- **Images Analyzed**: ~1.1 million street view images
+- **Unique Locations**: ~500,000 geographic points
+- **Time Range**: 2015-2023
+- **Survey Respondents**: ~100,000 (NYC + Seattle combined)
 
-## Common Commands
+### Analysis Outputs
+- **Final Datasets**: 4 analysis-ready files (903 MB)
+- **Publication Plots**: ~40 vector figures
+- **Statistical Models**: 2 IPW correction schemes per city
+- **ML Models**: 2 (YOLO people detection, ViT classification)
 
+### Repository Size
+- **Total (tracked in git)**: ~3.5 GB
+- **Code**: 3.0 MB (103 Python scripts)
+- **Data**: 1.8 GB (final datasets + training data)
+- **Models**: 110 MB (YOLO only)
+- **Outputs**: 108 MB (plots + analysis)
+- **Documentation**: 69 MB (64 markdown files)
+
+---
+
+## Municipal Deployment Package
+
+A self-contained package for municipalities is available in `nyc_seattle_municipal_deployment/` (717 MB):
+
+**Contents**:
+- Shadow annotation pipeline
+- Pre-configured scripts for NYC and Seattle
+- Deployment documentation
+- Sample outputs and test scripts
+
+**Usage**:
 ```bash
-
-# Download new city
-python scripts/data_collection/download_hot_cities.py
-
-# Add UTCI (recommended: optimized version)
-python batch_add_enhanced_utci_optimized.py
-
-# Run full pipeline
-python scripts/pipelines/hot_cities_full_pipeline.py
-
-# Generate visualizations
-python scripts/visualization/visualize_shade_ratios.py
-
-# Start Jupyter for exploration
-jupyter lab
+cd nyc_seattle_municipal_deployment
+bash run_pipeline.sh
 ```
 
-## File Locations
+See `nyc_seattle_municipal_deployment/docs/MUNICIPAL_DEPLOYMENT_PACKAGE_GUIDE.md` for details.
 
-### Input Data
-- Raw downloads: `data/raw/`
-- City metadata: `docs/hot_cities.txt`
-
-### Output Data
-- Processed CSVs: `data/processed/city_estimate_outcomes/`
-- Plots: `outputs/plots/`
-- Models: `outputs/models/`
-- Logs: `logs/`
-
-### Code
-- Scripts: `scripts/` (organized by function)
-- Active development: Root directory (UTCI scripts)
-- Notebooks: `notebooks/`
-- Tests: `tests/`
-- Deployment: `deployment/`
-
-## Data Flow
-
-```
-Raw SVI
-    ↓ (download_hot_cities.py)
-Metadata CSVs
-    ↓ (prelim_filtering_tmux.py)
-Filtered Data
-    ↓ (batch_add_enhanced_utci_optimized.py)
-Data + UTCI
-    ↓ (hot_cities_full_pipeline.py)
-Data + UTCI + ML Annotations
-    ↓ (visualize_shade_ratios.py)
-Publication Figures
-```
+---
 
 ## Technology Stack
 
 ### Core Libraries
-- **pandas**: Data manipulation
-- **geopandas**: Geographic data
-- **numpy**: Numerical operations
-- **matplotlib/seaborn**: Visualization
+- **pandas** (2.0+): Data manipulation and analysis
+- **geopandas** (0.13+): Geospatial data processing
+- **numpy** (1.24+): Numerical operations
+- **scipy** (1.11+): Statistical functions
 
-### APIs and Data
-- **Mapillary**: Street view imagery
-- **Open-Meteo ERA5**: Historical weather data
-- **Meteostat**: Weather station data
-- **OSMnx**: OpenStreetMap integration
+### Visualization
+- **matplotlib** (3.7+): Publication-quality plots
+- **seaborn** (0.12+): Statistical visualizations
+- **plotly** (5.14+): Interactive charts
 
 ### Machine Learning
-- **PyTorch**: Deep learning framework
-- **Ultralytics YOLO**: Object detection
-- **transformers**: Vision Transformer
-- **thermofeel**: UTCI calculations
+- **PyTorch** (2.0+): Deep learning framework
+- **ultralytics** (8.0+): YOLO object detection
+- **transformers** (4.30+): Vision Transformer models
+- **torchvision** (0.15+): Computer vision utilities
 
-### Processing
-- **tmux**: Long-running jobs
-- **multiprocessing**: Parallel processing
-- **requests**: API calls with retry logic
+### Geospatial & Weather
+- **osmnx** (1.5+): OpenStreetMap data access
+- **shapely** (2.0+): Geometric operations
+- **thermofeel** (1.0+): UTCI calculations
+- **requests** (2.31+): API client with retry logic
 
-## Troubleshooting
+### Development
+- **pytest** (7.4+): Testing framework
+- **jupyter** (1.0+): Interactive notebooks
+- **black**: Code formatting
+- **pylint**: Code linting
 
-### Common Issues
+---
 
-**"API rate limit exceeded"**
-- See [Processing Guide](03_PROCESSING.md) for retry logic
-- Add delays between requests
-- Use caching to reduce API calls
+## Common Issues & Troubleshooting
 
-**"Out of memory"**
-- Process cities individually
-- Reduce batch size
-- Use chunked processing
+### Missing Model File
 
-**"File not found"**
-- Check paths match [Project Structure](../PROJECT_STRUCTURE.md)
-- Verify files were generated by previous steps
-- Check for typos in filenames
+**Problem**: `models/vit_binary.pth` not found
 
-**"CUDA out of memory"**
-- Reduce batch size in ML scripts
-- Use CPU inference (slower but works)
-- Close other GPU programs
+**Solution**: Model excluded from repository due to size limits (328 MB)
+- Download from Hugging Face Hub: [link to be added]
+- Or retrain using `scripts/ml/binary_image_classification.py`
 
-### Getting Help
+### Memory Errors
 
-1. Check relevant documentation section
-2. Review logs in `logs/` directory
-3. Examine test scripts in `tests/` for examples
-4. Check git history for recent changes
+**Problem**: Out of memory when processing large datasets
 
-## Contributing
+**Solutions**:
+- Process one city at a time
+- Use chunked processing in scripts (see `--chunk-size` parameters)
+- Reduce batch size for ML inference
 
-### Adding New Cities
+### UTCI Calculation Errors
 
-1. Add to `docs/hot_cities.txt`
-2. Run download script
-3. Process through pipeline
-4. Update visualizations
+**Problem**: Missing or invalid UTCI values
 
-### Adding New Features
+**Solutions**:
+- Verify weather data completeness: `python scripts/analysis/investigate_extreme_utci.py`
+- Check ERA5 API access and rate limits
+- See `docs/03_PROCESSING.md` for troubleshooting
 
-1. Prototype in notebook (`notebooks/`)
-2. Develop in test script (`tests/`)
-3. Create production script (`scripts/`)
-4. Update relevant documentation
-5. Add to appropriate pipeline
+### Plot Generation Errors
 
-### Code Style
+**Problem**: Figures not generating correctly
 
-- Follow existing patterns in codebase
-- Add ABOUTME comments to new files
-- Use type hints for function signatures
-- Log important steps and errors
-- Include docstrings for public functions
+**Solutions**:
+- Verify input data exists in `data/final_datasets/`
+- Check IPW weights are calculated
+- Review sample sizes with `scripts/visualization/plot_data_quality_diagnostics.py`
 
-## Version History
-
-See main [WORKFLOW_SUMMARY.md](../WORKFLOW_SUMMARY.md) for detailed changelog.
-
-**Latest Updates**:
-- Enhanced UTCI data collection with multi-day context
-- Optimized batch processing with multithreading
-- Comprehensive visualization suite
-- Project reorganization for maintainability
-- Complete documentation in `docs/` folder
-
-## License
-
-See [LICENSE](LICENSE) for project licensing information.
+---
 
 ## Citation
 
-If you use this code or data in academic work, please cite:
-```
-[Citation information to be added]
+If you use this code or data in your research, please cite:
+
+```bibtex
+@article{sunny_day_svi_2024,
+  title={Urban Shade Preference and Thermal Comfort: Evidence from New York City and Seattle},
+  author={[Authors]},
+  journal={[Journal]},
+  year={2024},
+  note={Data and code: https://github.com/korawichkavee/urban-shades-and-sun}
+}
 ```
 
-## Contact
+---
 
-For questions or issues:
-- Create issue in project repository
-- Check existing documentation
-- Review code comments and docstrings
+## License
+
+[License information to be added]
+
+---
+
+## Contact & Support
+
+**Issues**: Create an issue in the GitHub repository
+
+**Questions**:
+- Review relevant documentation in `docs/`
+- Check existing issues for similar problems
+- Examine code comments and docstrings
+
+**Contributing**:
+- Fork the repository
+- Create a feature branch
+- Submit a pull request with clear description
+
+---
+
+## Acknowledgments
+
+### Data Sources
+- **Mapillary**: Street view imagery
+- **Open-Meteo/ERA5**: Historical weather data
+- **NYC DOT**: 2022 Citywide Mobility Survey
+- **Puget Sound Regional Council**: Household Travel Survey
+- **OpenStreetMap**: Geographic data
+
+### Tools & Libraries
+- PyTorch and Hugging Face teams
+- Ultralytics YOLO team
+- GeoPandas and OSMnx developers
+- Thermofeel package authors
+
+---
+
+## Version History
+
+**Latest Release** (Phase 3 Complete):
+- Repository reorganized for publication
+- NYC and Seattle focus (removed exploratory cities)
+- 195 GB → 3.5 GB tracked repository size
+- 103 production scripts (from 205)
+- Complete IPW methodology implementation
+- Publication-ready visualization suite
+
+See [PHASE_3_COMPLETE.md](PHASE_3_COMPLETE.md) for detailed changelog.
+
+---
+
+**Last Updated**: 2026-04-27
+**Repository**: https://github.com/korawichkavee/urban-shades-and-sun
