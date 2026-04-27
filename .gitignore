@@ -20,3 +20,6 @@ cache/
 # API configuration (contains sensitive keys)
 config/config.json
 *.db
+# Exploratory directories (archived)
+utci_latlon/
+salus_shadow/
