@@ -19,7 +19,9 @@ transform = transforms.Compose([
 ])
 
 # Load entire dataset (all data in one folder, stratified split later)
-dataset = ImageFolder("/home/kieran/Documents/Python/sunny_day_SVI/city7sample/images_to_label/batch2/labeled/data", transform=transform)
+from pathlib import Path
+ROOT = Path(__file__).resolve().parents[2]
+dataset = ImageFolder(ROOT / "data/vit_training_dataset", transform=transform)
 
 # Labels as numpy for stratification
 targets = np.array([label for _, label in dataset.samples])
