@@ -163,13 +163,51 @@ python scripts/visualization/plot_cross_city_statistical_comparison.py
 - `sr_weight`: Corrects for shadow ratio propensity
 - `combined_weight`: Product of all three weights
 
-### Mobility Survey Data
+### Data Sources & APIs
+
+This project integrates multiple data sources. Below are the APIs and data portals used:
+
+#### Street View Imagery - Mapillary
+
+**Location**: Street-level imagery for NYC and Seattle (2015-2023)
+
+- **API Documentation**: [Mapillary API v4](https://www.mapillary.com/developer/api-documentation)
+- **Getting Started**: [Mapillary Developer Portal](https://www.mapillary.com/developer)
+- **Access**: Requires free API key (sign up at developer portal)
+- **Data Collection Scripts**: See `scripts/data_collection/` for Mapillary download scripts
+- **Coverage**: ~1.1 million street view images analyzed across NYC and Seattle
+
+#### Weather & Climate Data - Open-Meteo / ERA5
+
+**Location**: Historical weather data for UTCI calculations
+
+- **Open-Meteo API**: [https://open-meteo.com/](https://open-meteo.com/)
+- **API Documentation**: [Open-Meteo API Docs](https://open-meteo.com/en/docs)
+- **Historical Weather API**: [Historical Weather Endpoint](https://open-meteo.com/en/docs/historical-weather-api)
+- **ERA5 Reanalysis**: [ECMWF ERA5 Data](https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5)
+- **Access**: Free, no API key required for Open-Meteo
+- **Data Variables**: Temperature, humidity, wind speed, solar radiation (hourly, 1940-present)
+- **Processing Scripts**: See `scripts/processing/add_weather_data.py` and `scripts/processing/add_utci_to_final_cities.py`
+
+#### Geographic Data - OpenStreetMap
+
+**Location**: Geographic boundaries and spatial data
+
+- **OpenStreetMap**: [https://www.openstreetmap.org/](https://www.openstreetmap.org/)
+- **API Documentation**: [OSM API](https://wiki.openstreetmap.org/wiki/API)
+- **Python Access**: Uses [OSMnx library](https://osmnx.readthedocs.io/) for programmatic access
+- **Data Types**: City boundaries, street networks, geographic features
+- **Usage**: Boundary definitions, spatial joins, geographic context
+
+#### Mobility Survey Data
 
 **NYC** (`data/mobility_surveys/nyc/`):
 - **Survey**: 2022 NYC Citywide Mobility Survey (52 MB)
 - **Source**: NYC Department of Transportation (NYC DOT)
 - **Download**: [NYC Citywide Mobility Survey Data](https://www.nyc.gov/html/dot/html/about/citywide-mobility-survey.shtml)
 - **Documentation**: User guide and codebook included in `data/mobility_surveys/nyc/`
+- **Survey Period**: September 28 - November 17, 2022
+- **Respondents**: 2,966 NYC residents
 - **UTCI-annotated trips**: `nyc_trips_with_utci.csv` (40 MB)
 
 **Seattle** (`data/mobility_surveys/seattle/`):
@@ -177,6 +215,7 @@ python scripts/visualization/plot_cross_city_statistical_comparison.py
 - **Source**: Puget Sound Regional Council (PSRC)
 - **Download**: [PSRC Household Travel Survey Program](https://www.psrc.org/our-work/household-travel-survey-program)
 - **Data Portal**: [PSRC Open Data Portal](https://psrc-psregcncl.hub.arcgis.com/)
+- **Coverage**: Puget Sound region including Seattle
 - **UTCI-annotated trips**: `seattle_trips_with_utci.csv` (58 MB)
 
 ---
@@ -609,15 +648,32 @@ If you use this code or data in your research, please cite:
 
 ## Acknowledgments
 
-### Data Sources
-- **Mapillary**: Street view imagery (2015-2023)
-- **Open-Meteo/ERA5**: Historical weather data (hourly reanalysis)
-- **NYC DOT**: 2022 Citywide Mobility Survey
+### Data Sources & APIs
+
+**Street View Imagery**:
+- **Mapillary**: Street view imagery (2015-2023), ~1.1M images
+  - API: https://www.mapillary.com/developer/api-documentation
+  - Developer Portal: https://www.mapillary.com/developer
+
+**Weather & Climate Data**:
+- **Open-Meteo API**: Historical weather data (hourly reanalysis, 1940-present)
+  - API: https://open-meteo.com/
+  - Documentation: https://open-meteo.com/en/docs
+- **ECMWF ERA5**: Reanalysis datasets
+  - Info: https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
+
+**Mobility Surveys**:
+- **NYC DOT**: 2022 Citywide Mobility Survey (Sept-Nov 2022, 2,966 respondents)
   - Download: https://www.nyc.gov/html/dot/html/about/citywide-mobility-survey.shtml
 - **Puget Sound Regional Council (PSRC)**: Household Travel Survey
   - Download: https://www.psrc.org/our-work/household-travel-survey-program
   - Data Portal: https://psrc-psregcncl.hub.arcgis.com/
-- **OpenStreetMap**: Geographic data and boundaries
+
+**Geographic Data**:
+- **OpenStreetMap**: Geographic boundaries and street networks
+  - Website: https://www.openstreetmap.org/
+  - API: https://wiki.openstreetmap.org/wiki/API
+  - Python Access: https://osmnx.readthedocs.io/ (OSMnx library)
 
 ### Tools & Libraries
 - PyTorch and Hugging Face teams
