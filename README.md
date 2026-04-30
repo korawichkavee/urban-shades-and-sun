@@ -166,12 +166,18 @@ python scripts/visualization/plot_cross_city_statistical_comparison.py
 ### Mobility Survey Data
 
 **NYC** (`data/mobility_surveys/nyc/`):
-- Survey: 2022 NYC Citywide Mobility Survey (52 MB)
-- UTCI-annotated trips: `nyc_trips_with_utci.csv` (40 MB)
+- **Survey**: 2022 NYC Citywide Mobility Survey (52 MB)
+- **Source**: NYC Department of Transportation (NYC DOT)
+- **Download**: [NYC Citywide Mobility Survey Data](https://www.nyc.gov/html/dot/html/about/citywide-mobility-survey.shtml)
+- **Documentation**: User guide and codebook included in `data/mobility_surveys/nyc/`
+- **UTCI-annotated trips**: `nyc_trips_with_utci.csv` (40 MB)
 
 **Seattle** (`data/mobility_surveys/seattle/`):
-- Survey: Puget Sound Household Travel Survey (133 MB)
-- UTCI-annotated trips: `seattle_trips_with_utci.csv` (58 MB)
+- **Survey**: Puget Sound Regional Council Household Travel Survey (133 MB)
+- **Source**: Puget Sound Regional Council (PSRC)
+- **Download**: [PSRC Household Travel Survey Program](https://www.psrc.org/our-work/household-travel-survey-program)
+- **Data Portal**: [PSRC Open Data Portal](https://psrc-psregcncl.hub.arcgis.com/)
+- **UTCI-annotated trips**: `seattle_trips_with_utci.csv` (58 MB)
 
 ---
 
@@ -604,11 +610,14 @@ If you use this code or data in your research, please cite:
 ## Acknowledgments
 
 ### Data Sources
-- **Mapillary**: Street view imagery
-- **Open-Meteo/ERA5**: Historical weather data
+- **Mapillary**: Street view imagery (2015-2023)
+- **Open-Meteo/ERA5**: Historical weather data (hourly reanalysis)
 - **NYC DOT**: 2022 Citywide Mobility Survey
-- **Puget Sound Regional Council**: Household Travel Survey
-- **OpenStreetMap**: Geographic data
+  - Download: https://www.nyc.gov/html/dot/html/about/citywide-mobility-survey.shtml
+- **Puget Sound Regional Council (PSRC)**: Household Travel Survey
+  - Download: https://www.psrc.org/our-work/household-travel-survey-program
+  - Data Portal: https://psrc-psregcncl.hub.arcgis.com/
+- **OpenStreetMap**: Geographic data and boundaries
 
 ### Tools & Libraries
 - PyTorch and Hugging Face teams
