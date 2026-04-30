@@ -211,10 +211,14 @@ This project integrates multiple data sources. Below are the APIs and data porta
 - **UTCI-annotated trips**: `nyc_trips_with_utci.csv` (40 MB)
 
 **Seattle** (`data/mobility_surveys/seattle/`):
-- **Survey**: Puget Sound Regional Council Household Travel Survey (133 MB)
+- **Survey**: 2017 Puget Sound Regional Council Household Travel Survey (133 MB)
 - **Source**: Puget Sound Regional Council (PSRC)
 - **Download**: [PSRC Household Travel Survey Program](https://www.psrc.org/our-work/household-travel-survey-program)
 - **Data Portal**: [PSRC Open Data Portal](https://psrc-psregcncl.hub.arcgis.com/)
+- **Survey Year**: 2017
+- **Households**: 11,310 households surveyed
+- **Persons**: 19,573 persons
+- **Trips**: 191,992 trip records
 - **Coverage**: Puget Sound region including Seattle
 - **UTCI-annotated trips**: `seattle_trips_with_utci.csv` (58 MB)
 
@@ -665,7 +669,7 @@ If you use this code or data in your research, please cite:
 **Mobility Surveys**:
 - **NYC DOT**: 2022 Citywide Mobility Survey (Sept-Nov 2022, 2,966 respondents)
   - Download: https://www.nyc.gov/html/dot/html/about/citywide-mobility-survey.shtml
-- **Puget Sound Regional Council (PSRC)**: Household Travel Survey
+- **Puget Sound Regional Council (PSRC)**: 2017 Household Travel Survey (11,310 households, 19,573 persons)
   - Download: https://www.psrc.org/our-work/household-travel-survey-program
   - Data Portal: https://psrc-psregcncl.hub.arcgis.com/
 
