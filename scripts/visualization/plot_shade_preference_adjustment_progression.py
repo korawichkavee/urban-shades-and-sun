@@ -154,17 +154,11 @@ for results_df, label, color, marker in adjustments:
 # Formatting
 ax.set_xlabel('UTCI Temperature (°C)', fontsize=12, fontweight='bold')
 ax.set_ylabel('Shade Preference (proportion in shade)', fontsize=12, fontweight='bold')
-ax.set_title('Shade Preference vs UTCI: Effect of Progressive IPW Adjustments\nSeattle Street View Data',
+ax.set_title('Shade Response Parameter Estimate',
              fontsize=14, fontweight='bold', pad=20)
-ax.legend(loc='upper left', fontsize=10, framealpha=0.95)
+ax.legend(loc='lower center', bbox_to_anchor=(0.5, -0.15), fontsize=10, framealpha=0.95, ncol=2)
 ax.grid(True, alpha=0.3)
 ax.set_ylim(-0.05, 1.05)
-
-# Add sample size information as text
-total_images = len(df)
-ax.text(0.98, 0.02, f'Total images: {total_images:,}',
-        transform=ax.transAxes, ha='right', va='bottom',
-        fontsize=9, bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
 
 plt.tight_layout()
 
