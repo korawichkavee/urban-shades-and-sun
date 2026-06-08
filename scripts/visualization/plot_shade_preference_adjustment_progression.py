@@ -106,10 +106,19 @@ def calculate_shade_preference(df, weight_col=None, min_images=10, temp_adjustme
         shade_pref = (bin_data['in_shade'] * weights).sum() / weights.sum()
 
         # Apply temperature adjustment if requested
+        # EXPLORATORY: Only adjust when walk_rate < baseline (selection occurring)
+        # Assumption: Non-walkers' preferences differ linearly with selection rate
         if temp_adjustment:
             walk_rate_T = walk_rate_interp(bin_center)
-            adjustment = (walk_rate_T - baseline_walk_rate) * 1.0  # sensitivity = 1.0
-            shade_pref = shade_pref + adjustment
+            if walk_rate_T < baseline_walk_rate:
+                # Selection is occurring
+                if bin_center >= baseline_utci:
+                    # Hot side: non-walkers avoiding heat → prefer shade more
+                    adjustment = (baseline_walk_rate - walk_rate_T) * 1.0
+                else:
+                    # Cold side: non-walkers avoiding cold → prefer sun more (less shade)
+                    adjustment = (walk_rate_T - baseline_walk_rate) * 1.0
+                shade_pref = shade_pref + adjustment
 
         # Bootstrap CI
         ci_lower, ci_upper = bootstrap_ci(bin_data['in_shade'], weights, n_bootstrap=1000, ci=95)
@@ -117,9 +126,13 @@ def calculate_shade_preference(df, weight_col=None, min_images=10, temp_adjustme
         # Apply same adjustment to CI bounds if using temp adjustment
         if temp_adjustment:
             walk_rate_T = walk_rate_interp(bin_center)
-            adjustment = (walk_rate_T - baseline_walk_rate) * 1.0
-            ci_lower = ci_lower + adjustment
-            ci_upper = ci_upper + adjustment
+            if walk_rate_T < baseline_walk_rate:
+                if bin_center >= baseline_utci:
+                    adjustment = (baseline_walk_rate - walk_rate_T) * 1.0
+                else:
+                    adjustment = (walk_rate_T - baseline_walk_rate) * 1.0
+                ci_lower = ci_lower + adjustment
+                ci_upper = ci_upper + adjustment
 
         results.append({
             'utci': bin_center,
@@ -159,9 +172,9 @@ fig, ax = plt.subplots(figsize=(12, 7))
 # Define colors and styles for each adjustment level
 adjustments = [
     (raw_results, 'Raw (unadjusted)', '#e74c3c', 'o'),
-    (temp_adjusted_results, 'Temperature adjustment (linear)', '#f39c12', 's'),
-    (temp_sr_results, 'Temp adjustment + shade ratio', '#3498db', '^'),
-    (full_results, 'Temp adjustment + shade ratio + DCWP', '#2ecc71', 'D')
+    (temp_adjusted_results, 'Temperature adjustment', '#f39c12', 's'),
+    (temp_sr_results, 'Temp + shade ratio', '#3498db', '^'),
+    (full_results, 'Temp + shade ratio + DCWP', '#2ecc71', 'D')
 ]
 
 # Plot each adjustment level
