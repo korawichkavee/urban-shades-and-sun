@@ -105,18 +105,19 @@ print("\nCalculating shade preference with different adjustments...")
 print("  - Raw (no adjustments)")
 raw_results = calculate_shade_preference(df, weight_col=None)
 
-# 2. Seasonal adjustment only
-print("  - Seasonal adjustment")
-seasonal_results = calculate_shade_preference(df, weight_col='w_season')
+# 2. Mobility/temperature correction only
+print("  - Mobility/temperature correction")
+mobility_results = calculate_shade_preference(df, weight_col='w_temp_ipw')
 
-# 3. Seasonal + temperature adjustment
-print("  - Seasonal + temperature adjustment")
-df['seasonal_temp_weight'] = df['w_season'] * df['w_temp_ipw']
-seasonal_temp_results = calculate_shade_preference(df, weight_col='seasonal_temp_weight')
+# 3. Mobility + shade ratio
+print("  - Mobility + shade ratio correction")
+df['mobility_sr_weight'] = df['w_temp_ipw'] * df['w_sr_ipw']
+mobility_sr_results = calculate_shade_preference(df, weight_col='mobility_sr_weight')
 
-# 4. Full combined adjustment
-print("  - Full combined adjustment")
-combined_results = calculate_shade_preference(df, weight_col='w_final')
+# 4. Full: Mobility + shade ratio + DCWP
+print("  - Full: Mobility + shade ratio + DCWP")
+df['full_weight'] = df['w_temp_ipw'] * df['w_sr_ipw'] * df['w_dcwp']
+full_results = calculate_shade_preference(df, weight_col='full_weight')
 
 # Create figure
 print("\nCreating figure...")
@@ -125,13 +126,19 @@ fig, ax = plt.subplots(figsize=(12, 7))
 # Define colors and styles for each adjustment level
 adjustments = [
     (raw_results, 'Raw (unadjusted)', '#e74c3c', 'o'),
-    (seasonal_results, 'Seasonal adjustment', '#f39c12', 's'),
-    (seasonal_temp_results, 'Seasonal + temperature', '#3498db', '^'),
-    (combined_results, 'Full IPW (seasonal + temp + shadow ratio)', '#2ecc71', 'D')
+    (mobility_results, 'Mobility correction (temp-based)', '#f39c12', 's'),
+    (mobility_sr_results, 'Mobility + shade ratio', '#3498db', '^'),
+    (full_results, 'Mobility + shade ratio + DCWP', '#2ecc71', 'D')
 ]
 
 # Plot each adjustment level
 for results_df, label, color, marker in adjustments:
+    # Convert to percentage
+    results_df = results_df.copy()
+    results_df['shade_pref'] = results_df['shade_pref'] * 100
+    results_df['ci_lower'] = results_df['ci_lower'] * 100
+    results_df['ci_upper'] = results_df['ci_upper'] * 100
+
     # Plot mean with error bars
     ax.errorbar(
         results_df['utci'],
@@ -153,12 +160,12 @@ for results_df, label, color, marker in adjustments:
 
 # Formatting
 ax.set_xlabel('UTCI Temperature (°C)', fontsize=12, fontweight='bold')
-ax.set_ylabel('Shade Preference (proportion in shade)', fontsize=12, fontweight='bold')
+ax.set_ylabel('Shade Preference (%)', fontsize=12, fontweight='bold')
 ax.set_title('Shade Response Parameter Estimate',
              fontsize=14, fontweight='bold', pad=20)
-ax.legend(loc='lower center', bbox_to_anchor=(0.5, -0.15), fontsize=10, framealpha=0.95, ncol=2)
+ax.legend(loc='lower center', bbox_to_anchor=(0.5, -0.25), fontsize=10, framealpha=0.95, ncol=2)
 ax.grid(True, alpha=0.3)
-ax.set_ylim(-0.05, 1.05)
+ax.set_ylim(-5, 105)
 
 plt.tight_layout()
 
@@ -181,8 +188,8 @@ print("="*80)
 for results_df, label, _, _ in adjustments:
     print(f"\n{label}:")
     print(f"  UTCI bins with data: {len(results_df)}")
-    print(f"  Mean shade preference: {results_df['shade_pref'].mean():.3f}")
-    print(f"  Min shade preference: {results_df['shade_pref'].min():.3f} at {results_df.loc[results_df['shade_pref'].idxmin(), 'utci']:.1f}°C")
-    print(f"  Max shade preference: {results_df['shade_pref'].max():.3f} at {results_df.loc[results_df['shade_pref'].idxmax(), 'utci']:.1f}°C")
+    print(f"  Mean shade preference: {results_df['shade_pref'].mean()*100:.1f}%")
+    print(f"  Min shade preference: {results_df['shade_pref'].min()*100:.1f}% at {results_df.loc[results_df['shade_pref'].idxmin(), 'utci']:.1f}°C")
+    print(f"  Max shade preference: {results_df['shade_pref'].max()*100:.1f}% at {results_df.loc[results_df['shade_pref'].idxmax(), 'utci']:.1f}°C")
 
 plt.show()
