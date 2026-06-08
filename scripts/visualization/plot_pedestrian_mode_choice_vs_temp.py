@@ -122,7 +122,7 @@ ax.errorbar(
 # Formatting
 ax.set_xlabel('UTCI Temperature (°C)', fontsize=12, fontweight='bold')
 ax.set_ylabel('Pedestrian Mode Share (%)', fontsize=12, fontweight='bold')
-ax.set_title('Pedestrian Mode Choice vs Temperature\nSeattle Puget Sound Regional Council 2017 Mobility Survey',
+ax.set_title('Pedestrian Mode Choice vs Temperature\nSeattle Puget Sound Regional Council 2023 Mobility Survey',
              fontsize=13, fontweight='bold', pad=20)
 ax.legend(loc='best', fontsize=10, framealpha=0.95)
 ax.grid(True, alpha=0.3)
