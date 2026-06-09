@@ -183,17 +183,24 @@ adjustments = [
     (full_results, 'Temp + shade ratio + DCWP', colors[3], markers[3])
 ]
 
+# Define x-axis offset to separate overlapping points
+dodge_width = 0.5  # 0.5°C total spread
+offsets = np.linspace(-dodge_width/2, dodge_width/2, len(adjustments))
+
 # Plot each adjustment level
-for results_df, label, color, marker in adjustments:
+for i, (results_df, label, color, marker) in enumerate(adjustments):
     # Convert to percentage
     results_df = results_df.copy()
     results_df['shade_pref'] = results_df['shade_pref'] * 100
     results_df['ci_lower'] = results_df['ci_lower'] * 100
     results_df['ci_upper'] = results_df['ci_upper'] * 100
 
+    # Apply x-axis offset for visibility
+    x_positions = results_df['utci'].values + offsets[i]
+
     # Plot mean with error bars
     ax.errorbar(
-        results_df['utci'],
+        x_positions,
         results_df['shade_pref'],
         yerr=[
             results_df['shade_pref'] - results_df['ci_lower'],
@@ -217,10 +224,8 @@ ax.set_ylabel('Shade Preference (%)', fontsize=13)
 # No title - rely on figure caption in paper
 ax.legend(loc='lower center', bbox_to_anchor=(0.5, -0.2), fontsize=10, framealpha=0.95, ncol=2)
 
-# Set x-axis ticks: major every 5°C, minor every 2.5°C
-from matplotlib.ticker import MultipleLocator
-ax.xaxis.set_major_locator(MultipleLocator(5))
-ax.xaxis.set_minor_locator(MultipleLocator(2.5))
+# Set x-axis ticks to match temperature bins
+ax.set_xticks(bin_centers)
 
 # Tight grid with major and minor ticks
 ax.minorticks_on()
