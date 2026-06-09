@@ -219,10 +219,10 @@ for i, (results_df, label, color, marker) in enumerate(adjustments):
     )
 
 # Formatting
-ax.set_xlabel('UTCI Temperature (°C)', fontsize=13)
-ax.set_ylabel('Shade Preference (%)', fontsize=13)
+ax.set_xlabel('UTCI Temperature (°C)', fontsize=18)
+ax.set_ylabel('Shade Preference (%)', fontsize=18)
 # No title - rely on figure caption in paper
-ax.legend(loc='lower center', bbox_to_anchor=(0.5, -0.2), fontsize=10, framealpha=0.95, ncol=2)
+ax.legend(loc='lower left', fontsize=13, framealpha=0.95)
 
 # Set x-axis ticks to match temperature bins
 ax.set_xticks(bin_centers)
