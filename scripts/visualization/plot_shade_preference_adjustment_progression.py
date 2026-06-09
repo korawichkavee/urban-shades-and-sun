@@ -202,21 +202,32 @@ for results_df, label, color, marker in adjustments:
         label=label,
         color=color,
         marker=marker,
-        markersize=6,
+        markersize=7,
         linewidth=0,
-        capsize=3,
-        capthick=1.5,
-        alpha=0.8,
+        capsize=4,
+        capthick=2.0,
+        elinewidth=1.8,
+        alpha=0.85,
         linestyle='none'
     )
 
 # Formatting
 ax.set_xlabel('UTCI Temperature (°C)', fontsize=13)
 ax.set_ylabel('Shade Preference (%)', fontsize=13)
-ax.set_title('Shade Response Parameter Estimate\nProgressive Adjustments for Selection Bias',
-             fontsize=14, pad=20)
-ax.legend(loc='lower center', bbox_to_anchor=(0.5, -0.25), fontsize=9, framealpha=0.95, ncol=2)
-ax.grid(True, alpha=0.3)
+# No title - rely on figure caption in paper
+ax.legend(loc='lower center', bbox_to_anchor=(0.5, -0.2), fontsize=10, framealpha=0.95, ncol=2)
+
+# Set x-axis ticks: major every 5°C, minor every 2.5°C
+from matplotlib.ticker import MultipleLocator
+ax.xaxis.set_major_locator(MultipleLocator(5))
+ax.xaxis.set_minor_locator(MultipleLocator(2.5))
+
+# Tight grid with major and minor ticks
+ax.minorticks_on()
+ax.grid(True, which='major', alpha=0.25, linestyle='-', linewidth=0.8, color='gray')
+ax.grid(True, which='minor', alpha=0.12, linestyle=':', linewidth=0.5, color='gray')
+ax.set_axisbelow(True)  # Grid behind data
+
 ax.set_ylim(-5, 105)
 
 plt.tight_layout()
