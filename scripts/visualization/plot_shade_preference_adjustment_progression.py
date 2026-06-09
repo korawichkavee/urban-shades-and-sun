@@ -197,11 +197,11 @@ for results_df, label, color, marker in adjustments:
         color=color,
         marker=marker,
         markersize=6,
-        linewidth=2,
+        linewidth=0,
         capsize=3,
         capthick=1.5,
         alpha=0.8,
-        linestyle='-'
+        linestyle='none'
     )
 
 # Formatting
