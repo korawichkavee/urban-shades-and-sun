@@ -184,7 +184,7 @@ adjustments = [
 ]
 
 # Define x-axis offset to separate overlapping points
-dodge_width = 0.5  # 0.5°C total spread
+dodge_width = 0.8  # 0.8°C total spread
 offsets = np.linspace(-dodge_width/2, dodge_width/2, len(adjustments))
 
 # Plot each adjustment level
@@ -227,13 +227,14 @@ ax.legend(loc='lower center', bbox_to_anchor=(0.5, -0.2), fontsize=10, framealph
 # Set x-axis ticks to match temperature bins
 ax.set_xticks(bin_centers)
 
-# Tight grid with major and minor ticks
-ax.minorticks_on()
+# Set y-axis ticks every 10%
+ax.set_yticks(np.arange(0, 101, 10))
+
+# Grid with major ticks only
 ax.grid(True, which='major', alpha=0.25, linestyle='-', linewidth=0.8, color='gray')
-ax.grid(True, which='minor', alpha=0.12, linestyle=':', linewidth=0.5, color='gray')
 ax.set_axisbelow(True)  # Grid behind data
 
-ax.set_ylim(-5, 105)
+ax.set_ylim(0, 100)
 
 plt.tight_layout()
 
