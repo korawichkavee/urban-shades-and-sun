@@ -170,11 +170,15 @@ print("\nCreating figure...")
 fig, ax = plt.subplots(figsize=(12, 7))
 
 # Define colors and styles for each adjustment level
+# Use seaborn colorblind-friendly palette
+colors = sns.color_palette("colorblind", 4)
+markers = ['o', 's', '^', 'D']
+
 adjustments = [
-    (raw_results, 'Raw (unadjusted)', '#e74c3c', 'o'),
-    (temp_adjusted_results, 'Temperature adjustment', '#f39c12', 's'),
-    (temp_sr_results, 'Temp + shade ratio', '#3498db', '^'),
-    (full_results, 'Temp + shade ratio + DCWP', '#2ecc71', 'D')
+    (raw_results, 'Raw (unadjusted)', colors[0], markers[0]),
+    (temp_adjusted_results, 'Temperature adjustment', colors[1], markers[1]),
+    (temp_sr_results, 'Temp + shade ratio', colors[2], markers[2]),
+    (full_results, 'Temp + shade ratio + DCWP', colors[3], markers[3])
 ]
 
 # Plot each adjustment level
