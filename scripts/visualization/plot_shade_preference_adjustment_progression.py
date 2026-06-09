@@ -12,7 +12,9 @@ from scipy.interpolate import interp1d
 sns.set_style("whitegrid")
 plt.rcParams['figure.dpi'] = 300
 plt.rcParams['savefig.dpi'] = 300
-plt.rcParams['font.size'] = 10
+plt.rcParams['font.size'] = 11
+plt.rcParams['font.family'] = 'serif'
+plt.rcParams['font.serif'] = ['Times New Roman', 'DejaVu Serif', 'Times']
 
 # Load Seattle data
 print("Loading Seattle data...")
@@ -209,10 +211,10 @@ for results_df, label, color, marker in adjustments:
     )
 
 # Formatting
-ax.set_xlabel('UTCI Temperature (°C)', fontsize=12, fontweight='bold')
-ax.set_ylabel('Shade Preference (%)', fontsize=12, fontweight='bold')
+ax.set_xlabel('UTCI Temperature (°C)', fontsize=13)
+ax.set_ylabel('Shade Preference (%)', fontsize=13)
 ax.set_title('Shade Response Parameter Estimate\nProgressive Adjustments for Selection Bias',
-             fontsize=14, fontweight='bold', pad=20)
+             fontsize=14, pad=20)
 ax.legend(loc='lower center', bbox_to_anchor=(0.5, -0.25), fontsize=9, framealpha=0.95, ncol=2)
 ax.grid(True, alpha=0.3)
 ax.set_ylim(-5, 105)
