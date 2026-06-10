@@ -187,6 +187,12 @@ adjustments = [
 dodge_width = 0.8  # 0.8°C total spread
 offsets = np.linspace(-dodge_width/2, dodge_width/2, len(adjustments))
 
+# Add highlighted temperature range for previously studied regime
+# Colorblind-safe light orange/peach background
+highlight_color = '#FFE5CC'  # Light orange/peach
+ax.axvspan(26.6, 33.4, alpha=0.5, color=highlight_color, zorder=0,
+           label='Shade preference increases with temperature\nabove 27°C (Lee (2020), Melnikov et al. (2022))')
+
 # Plot each adjustment level
 for i, (results_df, label, color, marker) in enumerate(adjustments):
     # Convert to percentage
