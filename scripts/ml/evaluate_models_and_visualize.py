@@ -25,7 +25,7 @@ torch.manual_seed(42)
 
 # Configuration
 VIT_MODEL_PATH = "outputs/models/vit_binary.pth"
-YOLO_MODEL_PATH = "outputs/models/sunny_batch_train6/weights/best.pt"
+YOLO_MODEL_PATH = "models/yolo_best.pt"
 OUTPUT_DIR = Path("outputs/model_evaluation")
 SAMPLES_DIR = OUTPUT_DIR / "sample_images"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
