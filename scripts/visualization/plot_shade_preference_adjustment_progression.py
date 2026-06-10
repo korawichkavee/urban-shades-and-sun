@@ -187,11 +187,44 @@ adjustments = [
 dodge_width = 0.8  # 0.8°C total spread
 offsets = np.linspace(-dodge_width/2, dodge_width/2, len(adjustments))
 
-# Add highlighted temperature range for previously studied regime
-# Colorblind-safe light orange/peach background
-highlight_color = '#FFE5CC'  # Light orange/peach
-ax.axvspan(26.6, 33.4, alpha=0.5, color=highlight_color, zorder=0,
-           label='Shade preference increases with temperature\nabove 27°C (Lee (2020), Melnikov et al. (2022))')
+# Calculate slope segments for the full (final) adjustment to add colored backing
+# Use final adjustment (temp + shade ratio + DCWP)
+full_sorted = full_results.sort_values('utci')
+utci_vals = full_sorted['utci'].values
+shade_vals = full_sorted['shade_pref'].values
+
+# Calculate slopes between consecutive points
+increasing_segments = []
+decreasing_segments = []
+
+for i in range(len(utci_vals) - 1):
+    x_start = utci_vals[i]
+    x_end = utci_vals[i + 1]
+    slope = (shade_vals[i + 1] - shade_vals[i]) / (x_end - x_start)
+
+    if slope > 0:
+        increasing_segments.append((x_start, x_end))
+    else:
+        decreasing_segments.append((x_start, x_end))
+
+# Add colored backing for increasing segments (light green - colorblind safe)
+increase_color = '#D4EDDA'  # Light green
+for x_start, x_end in increasing_segments:
+    ax.axvspan(x_start - bin_width/2, x_end + bin_width/2,
+               alpha=0.4, color=increase_color, zorder=0)
+
+# Add colored backing for decreasing segments (light red/pink - colorblind safe)
+decrease_color = '#F8D7DA'  # Light red/pink
+for x_start, x_end in decreasing_segments:
+    ax.axvspan(x_start - bin_width/2, x_end + bin_width/2,
+               alpha=0.4, color=decrease_color, zorder=0)
+
+# Add legend entries for the colored regions (using invisible patches)
+from matplotlib.patches import Patch
+increase_patch = Patch(facecolor=increase_color, alpha=0.4,
+                       label='Shade preference increasing\nwith temperature')
+decrease_patch = Patch(facecolor=decrease_color, alpha=0.4,
+                       label='Shade preference decreasing\nwith temperature')
 
 # Plot each adjustment level
 for i, (results_df, label, color, marker) in enumerate(adjustments):
@@ -228,7 +261,13 @@ for i, (results_df, label, color, marker) in enumerate(adjustments):
 ax.set_xlabel('UTCI Temperature (°C)', fontsize=18)
 ax.set_ylabel('Shade Preference (%)', fontsize=18)
 # No title - rely on figure caption in paper
-ax.legend(loc='lower left', fontsize=13, framealpha=0.95)
+
+# Get current handles and labels
+handles, labels = ax.get_legend_handles_labels()
+# Add the colored region patches to the legend
+handles = [increase_patch, decrease_patch] + handles
+labels = [increase_patch.get_label(), decrease_patch.get_label()] + labels
+ax.legend(handles, labels, loc='lower left', fontsize=13, framealpha=0.95)
 
 # Set x-axis ticks to match temperature bins
 ax.set_xticks(bin_centers)
