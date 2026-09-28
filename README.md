@@ -1,18 +1,18 @@
-# Urban Shade Preference Analysis: NYC and Seattle
+# Urban Shade Preference Analysis: Seattle
 
-Analysis of shade-seeking behavior in New York City and Seattle using street view imagery, thermal comfort metrics, and mobility survey data.
+Analysis of shade-seeking behavior using street view imagery, thermal comfort metrics, and mobility survey data.
 
-**Publication Package** | **Replication-Ready** | **NYC & Seattle Focus**
+**Publication Package** | **Replication-Ready** | **Seattle Case Study**
 
 ---
 
 ## Overview
 
 This repository contains the complete analysis pipeline for measuring how urban heat influences shade-seeking behavior using:
-- **Street View Imagery**: Mapillary imagery across NYC and Seattle
+- **Street View Imagery**: Mapillary imagery from Seattle, WA
 - **Shadow Detection**: Machine learning-based shadow and people detection
 - **Thermal Comfort**: UTCI (Universal Thermal Climate Index) calculations
-- **Mobility Data**: NYC Citywide Mobility Survey 2022 and Seattle Household Travel Survey
+- **Mobility Data**: Seattle Household Travel Survey (Puget Sound Regional Council 2023)
 - **Statistical Methods**: Inverse Probability Weighting (IPW) for bias correction
 
 ### Key Findings
@@ -27,53 +27,25 @@ Analysis of shade preference patterns across thermal comfort conditions, account
 ## Repository Structure
 
 ```
-├── data/                           # Analysis datasets (1.8 GB)
-│   ├── final_datasets/            # NYC & Seattle final analysis data (903 MB)
-│   │   ├── nyc/                   # NYC final datasets with IPW corrections
-│   │   └── seattle/               # Seattle final datasets with IPW corrections
+├── data/                           # Analysis datasets (~5.5 GB)
+│   ├── final_datasets/            # Seattle final analysis data (679 MB)
+│   │   └── seattle/               # Seattle datasets with IPW corrections
 │   ├── mobility_surveys/          # Travel survey data + UTCI annotations (281 MB)
-│   │   ├── nyc/                   # NYC 2022 Citywide Mobility Survey
 │   │   └── seattle/               # Seattle Household Travel Survey
-│   ├── vit_training_dataset/      # Binary classification training (444 MB)
-│   ├── yolo_training_dataset/     # Object detection training (195 MB)
-│   ├── city_boundaries/           # NYC & Seattle geographic boundaries (2.2 MB)
-│   └── geographic_lookups/        # ZIP/county centroids (904 KB)
+│   └── [additional data files]    # Supporting datasets
 │
-├── models/                         # Machine learning models (110 MB)
-│   └── yolo_best.pt               # YOLO v11 people detection model
+├── scripts/                        # Analysis pipeline (64 scripts)
+│   ├── analysis/                  # Statistical analysis & sensitivity
+│   ├── processing/                # Data enrichment
+│   ├── visualization/             # Publication plots
+│   ├── ml/                        # Model training
+│   ├── pipelines/                 # End-to-end workflows
+│   ├── data_collection/           # SVI download
+│   └── utils/                     # Helper functions
 │
-├── scripts/                        # Analysis pipeline (3.0 MB, 103 scripts)
-│   ├── analysis/                  # Statistical analysis (12 scripts)
-│   ├── processing/                # Data enrichment (23 scripts)
-│   ├── visualization/             # Publication plots (32 scripts)
-│   ├── ml/                        # Model training (14 scripts)
-│   ├── pipelines/                 # End-to-end workflows (7 scripts)
-│   ├── data_collection/           # SVI download (9 scripts)
-│   └── utils/                     # Helper functions (6 scripts)
-│
-├── outputs/                        # Results and figures (108 MB)
-│   ├── plots/                     # Publication-ready visualizations (101 MB)
-│   └── analysis/                  # Statistical results and reports (7 MB)
-│
-├── docs/                           # Documentation (69 MB, 64 files)
-│   ├── 01_GETTING_STARTED.md      # Project setup and overview
-│   ├── 02_DATA_COLLECTION.md      # SVI data download guide
-│   ├── 03_PROCESSING.md           # Weather/UTCI enrichment
-│   ├── 04_MACHINE_LEARNING.md     # Model training guide
-│   ├── 05_VISUALIZATION.md        # Plotting workflows
-│   ├── 06_PIPELINES.md            # End-to-end pipelines
-│   └── [Analysis guides]          # IPW, seasonal bias, diagnostics
-│
-├── nyc_seattle_municipal_deployment/  # Self-contained deployment package (717 MB)
-│   ├── scripts/                   # Municipal shadow analysis pipeline
-│   ├── docs/                      # Deployment guides
-│   └── [pipeline files]           # Ready-to-run workflows
-│
-├── notebooks/                      # Jupyter notebooks (4.2 MB)
-│   └── [Exploratory analysis]     # Interactive analysis notebooks
-│
-└── tests/                          # Test suite (120 KB)
-    └── [Unit tests]               # Code validation tests
+└── outputs/                        # Results and figures
+    ├── plots/                     # Publication-ready visualizations
+    └── analysis/                  # Statistical results and reports
 ```
 
 ---
@@ -102,19 +74,15 @@ pip install -r requirements.txt
 ### Running the Analysis
 
 ```bash
-# 1. Annotate mobility survey trips with UTCI
-python scripts/analysis/annotate_trips_with_utci.py
+# Generate main ablation table (Paper Table 2)
+python scripts/analysis/compute_ablation_table.py
 
-# 2. Analyze walking behavior vs UTCI
-python scripts/analysis/analyze_walking_vs_utci.py
+# Generate main figure (Paper Figure 2)
+python scripts/visualization/plot_shade_preference_adjustment_progression.py
 
-# 3. Generate publication plots
-python scripts/visualization/plot_utci_shade_preference_final.py
-python scripts/visualization/plot_binned_estimates.py
-python scripts/visualization/plot_ipw_smooth_curves.py
-
-# 4. Create cross-city comparison
-python scripts/visualization/plot_cross_city_statistical_comparison.py
+# Generate sensitivity analyses (Supplementary Tables S1, S2)
+python scripts/analysis/sensitivity/sensitivity_winsorization.py
+python scripts/analysis/sensitivity/sensitivity_tau.py
 ```
 
 ---
@@ -122,12 +90,6 @@ python scripts/visualization/plot_cross_city_statistical_comparison.py
 ## Data Description
 
 ### Final Datasets
-
-**NYC** (`data/final_datasets/nyc/`):
-- `new-york-city_final_analysis_with_ipw_revised.csv` (105 MB)
-  - IPW-corrected shade preference with seasonal + shadow ratio adjustments
-- `new-york-city_final_analysis_with_seasonal_and_temp.csv` (119 MB)
-  - Triple IPW: seasonal + temperature + shadow ratio corrections
 
 **Seattle** (`data/final_datasets/seattle/`):
 - `seattle_final_analysis_with_ipw_revised.csv` (319 MB)
@@ -200,15 +162,6 @@ This project integrates multiple data sources. Below are the APIs and data porta
 - **Usage**: Boundary definitions, spatial joins, geographic context
 
 #### Mobility Survey Data
-
-**NYC** (`data/mobility_surveys/nyc/`):
-- **Survey**: 2022 NYC Citywide Mobility Survey (52 MB)
-- **Source**: NYC Department of Transportation (NYC DOT)
-- **Download**: [NYC Citywide Mobility Survey Data](https://www.nyc.gov/html/dot/html/about/citywide-mobility-survey.shtml)
-- **Documentation**: User guide and codebook included in `data/mobility_surveys/nyc/`
-- **Survey Period**: September 28 - November 17, 2022
-- **Respondents**: 2,966 NYC residents
-- **UTCI-annotated trips**: `nyc_trips_with_utci.csv` (40 MB)
 
 **Seattle** (`data/mobility_surveys/seattle/`):
 - **Survey**: 2017 Puget Sound Regional Council Household Travel Survey (133 MB)
@@ -498,45 +451,25 @@ See `docs/02_DATA_COLLECTION.md` and `docs/03_PROCESSING.md` for:
 ## Project Statistics
 
 ### Data Coverage
-- **Cities**: New York City, Seattle
-- **Images Analyzed**: ~1.1 million street view images
-- **Unique Locations**: ~500,000 geographic points
+- **City**: Seattle, WA
+- **Images Analyzed**: 51,243 street view images (with pedestrians)
+- **UTCI Range**: -17°C to 33°C
 - **Time Range**: 2015-2023
-- **Survey Respondents**: ~100,000 (NYC + Seattle combined)
+- **Survey Data**: 56,704 trips from Puget Sound Regional Council Household Travel Survey (2023)
 
 ### Analysis Outputs
-- **Final Datasets**: 4 analysis-ready files (903 MB)
-- **Publication Plots**: ~40 vector figures
-- **Statistical Models**: 2 IPW correction schemes per city
-- **ML Models**: 2 (YOLO people detection, ViT classification)
+- **Final Datasets**: 2 Seattle analysis-ready files (680 MB)
+- **Publication Plots**: Main figure + supplementary figures
+- **Statistical Models**: Triple IPW correction (seasonal, temperature, shadow ratio)
+- **Sensitivity Analyses**: Winsorization, tau decay parameter
 
 ### Repository Size
-- **Total (tracked in git)**: ~3.5 GB
-- **Code**: 3.0 MB (103 Python scripts)
-- **Data**: 1.8 GB (final datasets + training data)
-- **Models**: 110 MB (YOLO only)
-- **Outputs**: 108 MB (plots + analysis)
-- **Documentation**: 69 MB (64 markdown files)
+- **Total (working directory)**: ~5.5 GB
+- **Code**: 64 Python scripts
+- **Data**: Seattle dataset (680 MB) + mobility surveys (281 MB) + supporting files
+- **Outputs**: Analysis results and plots
 
 ---
-
-## Municipal Deployment Package
-
-A self-contained package for municipalities is available in `nyc_seattle_municipal_deployment/` (717 MB):
-
-**Contents**:
-- Shadow annotation pipeline
-- Pre-configured scripts for NYC and Seattle
-- Deployment documentation
-- Sample outputs and test scripts
-
-**Usage**:
-```bash
-cd nyc_seattle_municipal_deployment
-bash run_pipeline.sh
-```
-
-See `nyc_seattle_municipal_deployment/docs/MUNICIPAL_DEPLOYMENT_PACKAGE_GUIDE.md` for details.
 
 ---
 

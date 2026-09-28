@@ -1,3 +1,0 @@
-Model,Task,Test Size,Accuracy/mAP@0.5,Precision,Recall,F1/mAP@0.5:0.95,AUC
-ViT Binary Classifier,Sunny/Not Sunny Classification,284,0.982,1.000,0.969,0.984,0.999
-YOLO Object Detector,Person/Shade Detection,166,0.796,0.848,0.714,0.572,N/A
