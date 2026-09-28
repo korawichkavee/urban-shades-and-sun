@@ -504,70 +504,38 @@ See `docs/02_DATA_COLLECTION.md` and `docs/03_PROCESSING.md` for:
 - **black**: Code formatting
 - **pylint**: Code linting
 
----
-
-## Common Issues & Troubleshooting
-
-### Missing Model File
-
-**Problem**: `models/vit_binary.pth` not found
-
-**Solution**: Model excluded from repository due to size limits (328 MB)
-- Download from Hugging Face Hub: [link to be added]
-- Or retrain using `scripts/ml/binary_image_classification.py`
-
-### Memory Errors
-
-**Problem**: Out of memory when processing large datasets
-
-**Solutions**:
-- Process one city at a time
-- Use chunked processing in scripts (see `--chunk-size` parameters)
-- Reduce batch size for ML inference
-
-### UTCI Calculation Errors
-
-**Problem**: Missing or invalid UTCI values
-
-**Solutions**:
-- Verify weather data completeness: `python scripts/analysis/investigate_extreme_utci.py`
-- Check ERA5 API access and rate limits
-- See `docs/03_PROCESSING.md` for troubleshooting
-
-### Plot Generation Errors
-
-**Problem**: Figures not generating correctly
-
-**Solutions**:
-- Verify input data exists in `data/final_datasets/`
-- Check IPW weights are calculated
-- Review sample sizes with `scripts/visualization/plot_data_quality_diagnostics.py`
-
----
 
 ## Citation
 
 If you use this code or data in your research, please cite:
 
 ```bibtex
-@article{sunny_day_svi_2024,
-  title={Urban Shade Preference and Thermal Comfort: Evidence from New York City and Seattle},
-  author={[Authors]},
-  journal={[Journal]},
-  year={2024},
-  note={Data and code: https://github.com/korawichkavee/urban-shades-and-sun}
-}
+@inproceedings{elrod2026hot,
+    title={Too Hot to Handle: Why Measuring Human Behavior in Street View
+  Imagery Is Harder Than It Looks},
+    author={Elrod, Kieran and Kavee, Korawich and Flanigan, Katherine A. and
+   Berg{\'e}s, Mario},
+    booktitle={IFAC Conference on Cyber-Physical Human Systems},
+    volume={59},
+    number={23},
+    pages={1--8},
+    year={2026},
+    organization={IFAC},
+    publisher={Elsevier},
+    note={Code and data:
+  \url{https://github.com/korawichkavee/urban-shades-and-sun}}
+  }
+
 ```
 
 ---
 
 ## License
-
-[License information to be added]
+MIT License
 
 ---
 
-## Contact & Support
+## Contact
 
 **Issues**: Create an issue in the GitHub repository
 
@@ -575,11 +543,7 @@ If you use this code or data in your research, please cite:
 - Review relevant documentation in `docs/`
 - Check existing issues for similar problems
 - Examine code comments and docstrings
-
-**Contributing**:
-- Fork the repository
-- Create a feature branch
-- Submit a pull request with clear description
+- Contact the authors
 
 ---
 
@@ -618,19 +582,7 @@ If you use this code or data in your research, please cite:
 - GeoPandas and OSMnx developers
 - Thermofeel package authors
 
----
 
-## Version History
-
-**Latest Release** (Phase 3 Complete):
-- Repository reorganized for publication
-- NYC and Seattle focus (removed exploratory cities)
-- 195 GB → 3.5 GB tracked repository size
-- 103 production scripts (from 205)
-- Complete IPW methodology implementation
-- Publication-ready visualization suite
-
-See [PHASE_3_COMPLETE.md](PHASE_3_COMPLETE.md) for detailed changelog.
 
 ---
 
