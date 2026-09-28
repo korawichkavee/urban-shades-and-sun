@@ -34,7 +34,7 @@ Analysis of shade preference patterns across thermal comfort conditions, account
 │   │   └── seattle/               # Seattle Household Travel Survey
 │   └── [additional data files]    # Supporting datasets
 │
-├── scripts/                        # Analysis pipeline (64 scripts)
+├── scripts/                        # Analysis pipeline (79 scripts)
 │   ├── analysis/                  # Statistical analysis & sensitivity
 │   ├── processing/                # Data enrichment
 │   ├── visualization/             # Publication plots
@@ -131,13 +131,13 @@ This project integrates multiple data sources. Below are the APIs and data porta
 
 #### Street View Imagery - Mapillary
 
-**Location**: Street-level imagery for NYC and Seattle (2015-2023)
+**Location**: Street-level imagery for Seattle (2015-2023)
 
 - **API Documentation**: [Mapillary API v4](https://www.mapillary.com/developer/api-documentation)
 - **Getting Started**: [Mapillary Developer Portal](https://www.mapillary.com/developer)
 - **Access**: Requires free API key (sign up at developer portal)
 - **Data Collection Scripts**: See `scripts/data_collection/` for Mapillary download scripts
-- **Coverage**: ~1.1 million street view images analyzed across NYC and Seattle
+- **Coverage**: Street view images analyzed for Seattle, WA
 
 #### Weather & Climate Data - Open-Meteo / ERA5
 
@@ -179,10 +179,11 @@ This project integrates multiple data sources. Below are the APIs and data porta
 
 ## Scripts Overview
 
-### Analysis Scripts (12 files)
+### Analysis Scripts (7 files)
 
 | Script | Purpose |
 |--------|---------|
+| `compute_ablation_table.py` | Generate main ablation study results (Table 2) |
 | `analyze_walking_vs_utci.py` | Walking mode choice vs thermal comfort |
 | `annotate_trips_with_utci.py` | Add UTCI to mobility survey trips |
 | `investigate_curve_patterns.py` | Analyze shade preference curve shapes |
@@ -202,20 +203,22 @@ This project integrates multiple data sources. Below are the APIs and data porta
 | `apply_seasonal_reweighting.py` | Seasonal bias correction |
 | `add_weather_data.py` | ERA5 weather enrichment |
 
-### Visualization Scripts (32 files)
+### Visualization Scripts (10 files)
 
 | Script | Purpose |
 |--------|---------|
+| `plot_shade_preference_adjustment_progression.py` | Main figure (Figure 2): IPW adjustment progression |
 | `plot_utci_shade_preference_final.py` | Main shade preference curves |
+| `plot_utci_shade_preference_curves.py` | Alternative shade preference visualizations |
 | `plot_binned_estimates.py` | Binned shade preference with CIs |
 | `plot_ipw_smooth_curves.py` | Smoothed IPW-corrected curves |
-| `plot_cross_city_statistical_comparison.py` | NYC vs Seattle comparison |
+| `plot_cross_city_statistical_comparison.py` | Cross-city statistical comparison |
 | `plot_seasonal_bootstrap_comparison.py` | Seasonal adjustment effects |
 | `plot_data_quality_diagnostics.py` | Sample size & coverage diagnostics |
 | `plot_weight_distributions.py` | IPW weight diagnostics |
 | `plot_residual_diagnostics.py` | Model residual analysis |
 
-### Machine Learning Scripts (14 files)
+### Machine Learning Scripts (15 files)
 
 | Script | Purpose |
 |--------|---------|
@@ -332,11 +335,10 @@ Located in `outputs/analysis/`:
 
 ### YOLO People Detection
 
-**Model**: `models/yolo_best.pt` (110 MB)
+**Model**: `models/yolo_best.pt` (archived)
 - Architecture: YOLO v11s
 - Task: Detect people and shadows in street view images
-- Training: 195 MB custom dataset (`data/yolo_training_dataset/`)
-- Performance: See `docs/END_TO_END_ACCURACY_ANALYSIS.md`
+- Training: Custom dataset (archived)
 
 ### ViT Binary Classifier
 
@@ -373,11 +375,10 @@ Will be available via Hugging Face Hub: [link to be added]
 3. **Verify Data**
    ```bash
    # Check final datasets exist
-   ls data/final_datasets/nyc/
    ls data/final_datasets/seattle/
 
    # Check mobility surveys
-   ls data/mobility_surveys/*/
+   ls data/mobility_surveys/seattle/
    ```
 
 4. **Run Analysis**
@@ -406,46 +407,6 @@ Will be available via Hugging Face Hub: [link to be added]
    ls outputs/analysis/figures/
    ```
 
-### Processing New Cities (Advanced)
-
-See `docs/02_DATA_COLLECTION.md` and `docs/03_PROCESSING.md` for:
-- Mapillary API data download
-- Weather data enrichment
-- Shadow annotation pipeline
-- IPW weight calculation
-
----
-
-## Documentation
-
-### Getting Started
-- **[01_GETTING_STARTED.md](docs/01_GETTING_STARTED.md)** - Project overview, setup, and workflows
-- **[PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)** - Complete directory structure
-- **[PHASE_3_COMPLETE.md](PHASE_3_COMPLETE.md)** - Repository organization details
-
-### Data Collection & Processing
-- **[02_DATA_COLLECTION.md](docs/02_DATA_COLLECTION.md)** - Mapillary SVI download
-- **[03_PROCESSING.md](docs/03_PROCESSING.md)** - Weather and UTCI enrichment
-- **[WEATHER_PROCESSING_README.md](docs/WEATHER_PROCESSING_README.md)** - Overnight processing guide
-
-### Machine Learning
-- **[04_MACHINE_LEARNING.md](docs/04_MACHINE_LEARNING.md)** - Model training workflows
-- **[END_TO_END_ACCURACY_ANALYSIS.md](docs/END_TO_END_ACCURACY_ANALYSIS.md)** - Model evaluation
-
-### Analysis Methods
-- **[IPW_RESULTS_INTERPRETATION.md](docs/IPW_RESULTS_INTERPRETATION.md)** - IPW methodology
-- **[IPW_ADJUSTMENT_REVIEW_AND_CRITICAL_BUG.md](docs/IPW_ADJUSTMENT_REVIEW_AND_CRITICAL_BUG.md)** - Correction details
-- **[SEASONAL_ADJUSTMENT_SUMMARY.md](docs/SEASONAL_ADJUSTMENT_SUMMARY.md)** - Temporal bias correction
-- **[WEIGHT_DIAGNOSTICS_REVISED.md](docs/WEIGHT_DIAGNOSTICS_REVISED.md)** - IPW diagnostics
-
-### Visualization
-- **[05_VISUALIZATION.md](docs/05_VISUALIZATION.md)** - Plotting workflows
-- **[BINNED_SAMPLE_SIZE_SUMMARY.md](docs/BINNED_SAMPLE_SIZE_SUMMARY.md)** - Sample size details
-
-### Workflows
-- **[06_PIPELINES.md](docs/06_PIPELINES.md)** - End-to-end pipelines
-- **[07_NOTEBOOKS.md](docs/07_NOTEBOOKS.md)** - Jupyter notebook guide
-
 ---
 
 ## Project Statistics
@@ -465,7 +426,7 @@ See `docs/02_DATA_COLLECTION.md` and `docs/03_PROCESSING.md` for:
 
 ### Repository Size
 - **Total (working directory)**: ~5.5 GB
-- **Code**: 64 Python scripts
+- **Code**: 79 Python scripts
 - **Data**: Seattle dataset (680 MB) + mobility surveys (281 MB) + supporting files
 - **Outputs**: Analysis results and plots
 
@@ -504,6 +465,46 @@ See `docs/02_DATA_COLLECTION.md` and `docs/03_PROCESSING.md` for:
 - **black**: Code formatting
 - **pylint**: Code linting
 
+---
+
+## Common Issues & Troubleshooting
+
+### Missing Model File
+
+**Problem**: `models/vit_binary.pth` not found
+
+**Solution**: Model excluded from repository due to size limits (328 MB)
+- Download from Hugging Face Hub: [link to be added]
+- Or retrain using `scripts/ml/binary_image_classification.py`
+
+### Memory Errors
+
+**Problem**: Out of memory when processing large datasets
+
+**Solutions**:
+- Process one city at a time
+- Use chunked processing in scripts (see `--chunk-size` parameters)
+- Reduce batch size for ML inference
+
+### UTCI Calculation Errors
+
+**Problem**: Missing or invalid UTCI values
+
+**Solutions**:
+- Verify weather data completeness
+- Check ERA5 API access and rate limits
+- Review processing scripts in `scripts/processing/`
+
+### Plot Generation Errors
+
+**Problem**: Figures not generating correctly
+
+**Solutions**:
+- Verify input data exists in `data/final_datasets/`
+- Check IPW weights are calculated
+- Review sample sizes with `scripts/visualization/plot_data_quality_diagnostics.py`
+
+---
 
 ## Citation
 
@@ -525,7 +526,6 @@ If you use this code or data in your research, please cite:
     note={Code and data:
   \url{https://github.com/korawichkavee/urban-shades-and-sun}}
   }
-
 ```
 
 ---
@@ -540,10 +540,15 @@ MIT License
 **Issues**: Create an issue in the GitHub repository
 
 **Questions**:
-- Review relevant documentation in `docs/`
 - Check existing issues for similar problems
 - Examine code comments and docstrings
+- Review scripts in `scripts/` directory
 - Contact the authors
+
+**Contributing**:
+- Fork the repository
+- Create a feature branch
+- Submit a pull request with clear description
 
 ---
 
@@ -564,8 +569,6 @@ MIT License
   - Info: https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
 
 **Mobility Surveys**:
-- **NYC DOT**: 2022 Citywide Mobility Survey (Sept-Nov 2022, 2,966 respondents)
-  - Download: https://www.nyc.gov/html/dot/html/about/citywide-mobility-survey.shtml
 - **Puget Sound Regional Council (PSRC)**: 2017 Household Travel Survey (11,310 households, 19,573 persons)
   - Download: https://www.psrc.org/our-work/household-travel-survey-program
   - Data Portal: https://psrc-psregcncl.hub.arcgis.com/
@@ -581,8 +584,6 @@ MIT License
 - Ultralytics YOLO team
 - GeoPandas and OSMnx developers
 - Thermofeel package authors
-
-
 
 ---
 
