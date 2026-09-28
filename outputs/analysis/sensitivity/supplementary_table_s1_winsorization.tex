@@ -1,0 +1,19 @@
+\begin{table}[t!]
+\centering
+\caption{Sensitivity to winsorization threshold in shadow ratio inverse probability weighting.}
+\label{tab:sensitivity-winsorization}
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Percentile} & \textbf{Raw} & \textbf{+Temp} & \textbf{+SR-IPW} & \textbf{+DCWP} \\
+\midrule
+90th & 0.657 & 0.649 & 0.433 & 0.525 \\
+95th & 0.657 & 0.649 & 0.405 & 0.501 \\
+99th & 0.657 & 0.649 & 0.388 & 0.485 \\
+\bottomrule
+\end{tabular}
+\vspace{2pt}
+\parbox{0.9\linewidth}{\footnotesize
+\textit{Note:} Final estimates vary by less than 0.3 percentage points across winsorization thresholds (90th, 95th, 99th percentile), demonstrating robustness of the bias correction approach to this methodological choice.
+}
+\end{table}

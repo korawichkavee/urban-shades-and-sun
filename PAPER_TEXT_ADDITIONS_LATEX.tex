@@ -1,0 +1,134 @@
+% Paper Text Additions for Reviewer Response
+% Date: 2026-09-28
+% Purpose: Minimal LaTeX additions for space-constrained revision
+
+% ============================================================================
+% SECTION 1: Methods - Brief Parameter Justifications (3 sentences)
+% ============================================================================
+
+% ----------------------------------------------------------------------------
+% Section 2.5.1 (Shadow Ratio IPW) - ADD 1 SENTENCE
+% Insert after describing the 95th percentile winsorization
+% ----------------------------------------------------------------------------
+
+We tested caps from the 90th to 99th percentile; final estimates varied by less than 4 percentage points, demonstrating robustness (Supplementary Table S1).
+
+
+% ----------------------------------------------------------------------------
+% Section 2.5.2 (Temperature IPW) - ADD 1 SENTENCE
+% Insert after describing the λ_min = 0.1 clipping
+% ----------------------------------------------------------------------------
+
+This threshold has no effect in Seattle (all bins exceed 19\% walking rate) but prevents extreme leverage in cities with more extreme temperature ranges.
+
+
+% ----------------------------------------------------------------------------
+% Section 2.5.3 (Distance-Conditioned Walk Preference) - ADD 1 SENTENCE
+% Insert after citing τ = 20m from Lee (2020)
+% ----------------------------------------------------------------------------
+
+Varying $\tau$ from 5 to 50 meters changes the DCWP correction by only 1.6 percentage points while shadow ratio correction remains constant at $-24.4$ pp (Supplementary Table S2).
+
+
+% ============================================================================
+% SECTION 2: New Subsection - Parameter Sensitivity
+% Location: End of Section 2.5 (Methods) OR end of Section 3 (Results)
+% ============================================================================
+
+% ----------------------------------------------------------------------------
+% OPTION A: Ultra-Condensed (100 words, no table)
+% ----------------------------------------------------------------------------
+
+\subsection{Parameter Sensitivity}
+
+We tested robustness to methodological parameters. Winsorization caps (90th, 95th, 99th percentile) yield final estimates of 52.5\%, 50.1\%, and 48.5\% respectively---a 4.0 percentage point range with overlapping confidence intervals (Supplementary Table S1). Detour decay parameters $\tau \in [5, 50]$ meters produce DCWP corrections varying by only 1.6~pp (3.5--5.1~pp), while shadow ratio correction remains constant at $-24.4$~pp (Supplementary Table S2). Walk rate clipping at $\lambda_{\text{min}} = 0.1$ has zero effect on Seattle data. All sensitivity analyses demonstrate that bias correction choices shift estimates by 13--17 percentage points regardless of specific parameter values.
+
+
+% ----------------------------------------------------------------------------
+% OPTION B: Table-Centric (150 words with compact table)
+% ----------------------------------------------------------------------------
+
+\subsection{Parameter Sensitivity}
+
+Table~\ref{tab:sensitivity-summary} summarizes sensitivity to three methodological parameters. Winsorization caps from the 90th to 99th percentile yield final estimates ranging 48.5--52.5\%, demonstrating stability. Detour decay parameters $\tau \in [5, 50]$ meters produce modest variation in DCWP correction (3.5--5.1~pp) while shadow ratio correction remains constant at $-24.4$~pp across all values. Walk rate clipping has no effect in Seattle as all temperature bins exceed 19\% walking rate. The total bias correction ranges from 13.2 to 17.1 percentage points across all tested parameters---substantially larger than any individual parameter's influence. This demonstrates that our core finding (bias corrections dominate observed behavioral signal) is robust to defensible parameter choices, though the magnitude of individual corrections varies modestly with specification.
+
+\begin{table}[t]
+\centering
+\caption{Parameter sensitivity summary. See Supplementary Tables S1--S2 for complete ablation results.}
+\label{tab:sensitivity-summary}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Parameter} & \textbf{Range Tested} & \textbf{Final Estimate} & \textbf{Key Finding} \\
+\midrule
+Winsorization ($c$) & 90th--99th \%ile & 48.5--52.5\% & 4.0 pp range \\
+Detour decay ($\tau$) & 5--50 meters & 44.0--45.6\% & DCWP: 1.6 pp; SR constant \\
+Walk clip ($\lambda_{\text{min}}$) & 0.0 vs 0.1 & No change & Zero effect (all rates $>$19\%) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+% ============================================================================
+% SECTION 3: Discussion/Conclusion - Future Work
+% Location: Section 4, after validation data paragraph
+% ============================================================================
+
+% ----------------------------------------------------------------------------
+% OPTION A: Long Version (120 words)
+% Addresses R2.4, R7.1, R7.3 thoroughly
+% ----------------------------------------------------------------------------
+
+Several methodological extensions merit future work. First, formal sensitivity bounds \citep{cinelli2020making, rosenbaum2002observational} could quantify unmeasured confounding required to nullify our findings, complementing our empirical sensitivity analyses. Second, theoretical guarantees on IPW estimator properties under SVI sampling (identification conditions, asymptotic behavior) would strengthen inference, though SVI's non-probabilistic sampling complicates such analysis. Third, while we propose fixed-camera validation studies, privacy and cost concerns remain valid. Alternative approaches include aggregated mobility data from transportation authorities, synthetic pedestrian simulations with known behavioral parameters, or controlled field experiments in limited areas. The broader point stands: some form of validation infrastructure is required before SVI-derived behavioral parameters can be trusted for cyber-physical human system identification.
+
+
+% ----------------------------------------------------------------------------
+% OPTION B: Short Version (40 words)
+% Minimal acknowledgment
+% ----------------------------------------------------------------------------
+
+Future work should develop formal sensitivity bounds \citep{cinelli2020making} and theoretical guarantees for IPW under SVI sampling. Alternative validation approaches beyond fixed cameras include aggregated mobility data, synthetic simulations, or limited field experiments.
+
+
+% ============================================================================
+% SECTION 4: References to Add (BibTeX format)
+% ============================================================================
+
+% Add to your .bib file:
+
+@article{cinelli2020making,
+  title={Making sense of sensitivity: Extending omitted variable bias},
+  author={Cinelli, Carlos and Hazlett, Chad},
+  journal={Journal of the Royal Statistical Society: Series B (Statistical Methodology)},
+  volume={82},
+  number={1},
+  pages={39--67},
+  year={2020},
+  publisher={Wiley Online Library}
+}
+
+@book{rosenbaum2002observational,
+  title={Observational studies},
+  author={Rosenbaum, Paul R},
+  year={2002},
+  edition={2nd},
+  publisher={Springer}
+}
+
+
+% ============================================================================
+% IMPLEMENTATION NOTES
+% ============================================================================
+
+% RECOMMENDED MINIMAL PACKAGE (~ 200 words total):
+% 1. Methods: Add 3 one-sentence additions above (Section 2.5.1, 2.5.2, 2.5.3)
+% 2. Results/Methods: Add OPTION A ultra-condensed subsection (no table)
+% 3. Discussion: Add OPTION B short version
+% 4. Supplementary: Include Tables S1 and S2 (LaTeX files already generated)
+%
+% If space allows, use OPTION B for parameter sensitivity (includes table)
+% and OPTION A for discussion (more thorough).
+%
+% The supplementary LaTeX files are already generated:
+%   - outputs/analysis/sensitivity/supplementary_table_s1_winsorization.tex
+%   - outputs/analysis/sensitivity/supplementary_table_s2_tau.tex

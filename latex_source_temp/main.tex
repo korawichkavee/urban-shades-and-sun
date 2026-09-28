@@ -1,0 +1,436 @@
+\documentclass{ifacconf}
+\usepackage{natbib}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{makecell}
+\usepackage[hidelinks]{hyperref}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{url}
+\usepackage{siunitx}
+\begin{document}
+\begin{frontmatter}
+
+\title{Too Hot to Handle: Why Measuring Human Behavior in Street View Imagery Is Harder Than It Looks}
+\thanks[footnoteinfo]{This material is based upon work supported by the National Science
+Foundation under Grant No. 2425121 and the Ministry of Higher Education, Science, Research, and Innovation of the Royal Thai Government [Unit 0330084: Smart Civil Engineering].}
+\thanks[footnoteinfo]{Mario Bergés holds concurrent appointments as a Professor of Civil and Environmental Engineering at Carnegie Mellon University and as an Amazon Scholar. This publication describes work performed at CMU and is not associated with Amazon.\\$^\dagger$ Corresponding author: Katherine A. Flanigan.}
+\author[First]{Kieran Elrod}
+\author[First]{Korawich Kavee}
+\author[First]{Katherine Flanigan$^\dagger$}
+\author[First]{Mario Bergés}
+
+\address[First]{Department of Civil \& Environmental Engineering, Carnegie Mellon University, 5000 Forbes Ave., Pittsburgh, PA 15213 (e-mails: kelrod@andrew.cmu.edu, kkavee@andrew.cmue.edu, kflaniga@andrew.cmu.edu, mberges@andrew.cmu.edu).}
+
+\begin{abstract}
+
+
+
+Many large-scale cyber-physical-human systems require city-scale behavioral data, but sensors remain sparse and costly. Street view imagery (SVI) is a cheap, widely-available alternative, but spatiotemporal biases distort inference, especially for behavior. We use a simple probe---do pedestrians seek shade more as thermal stress rises?---to explore requirements for SVI-based behavioral measurement. In a Seattle, WA case study (51,243 images), bias-correction choices, not the underlying behavior, dominates results: one correction shifts estimates by 24\%, and cumulative corrections by 16\%. Naive SVI-based behavior measurement should not be trusted without bias considerations; we close by identifying the validation data bias correction requires.
+
+\end{abstract}
+
+\begin{keyword}
+Bias, cyber-physical-human systems, human-infrastructure interaction, street view images, urban thermal comfort.
+\end{keyword}
+
+\end{frontmatter}
+\maketitle
+
+\section{Introduction and Motivation}
+
+Cyber-physical-human-systems (CPHS) integrate control systems with human behavior to enable adaptive urban management (\cite{samad2023human}). Closing the loop at the scale of cities requires not only actuation and sensing infrastructure but also accurate models of how humans respond to stimuli (e.g., environmental inputs)---in control terms, a human-in-the-loop transfer function mapping stimuli to behavioral outputs. Identifying such response functions is a system identification problem, and one for which current sensing modalities are inadequate: outside of human mobility, city-scale behavioral sensing relies on spatially discrete, permanently installed sensors that are challenging to deploy across urban areas.
+
+Street view imagery (SVI) is an attractive alternative. It is widely available, inexpensive to collect, and capable of encoding human behavioral signals across large geographical areas without per-location instrumentation (\cite{yin2015bigdata,elrod2025street}). This coverage makes SVI a natural modality for city-scale behavioral parameter estimation---once a response function is well-characterized, it could reduce reliance on continuous human monitoring. An adaptive urban system could be driven by indirect stimuli (e.g., temperature alone) rather than persistent visual surveillance alone, with benefits for both scalability and privacy.
+
+However, SVI suffer from well-documented biases such as sparse and uneven spatial and temporal coverage, which can significantly distort behavioral measurements if left uncorrected (\cite{elrod2026towards}). Extending SVI to human features (e.g., what people are doing, and why) is challenging because people often appear intermittently, are captured incidentally, and their presence in an image is entangled with the same spatiotemporal sampling biases that distort the corpus itself. Correcting these biases is therefore a prerequisite for using SVI as a credible input to CPHS system identification.
+
+The premise of this paper is that the community is on the cusp of using SVI for human-centered measurement, and that it should think carefully about the validity of such measurements before results accumulate.  We therefore take a deliberately modest behavioral question and use it not to answer, but to surface everything that stands between SVI corpora and trustworthy statements about human behavior. Towards this end, we are the first---to the best of our knowledge---to develop a SVI bias correction methodology for human behavior and apply it to estimate a city-scale behavioral response function. Specifically, we frame this as a parameter identification problem: estimating pedestrian shade preference as a function of outdoor temperature. Seattle, WA was selected as the case study for its low spatiotemporal bias in SVI coverage and availability of mobility survey data (2,023, $n=56,704$ trips). Shade preference is chosen as a tractable, well-motivated starting point; the SVI-based methodology developed here is general and may be applied to a wider class of urban behavioral parameters relevant to CPHS.
+
+\sloppy
+\subsection{Shade Preference as a Behavioral Parameter}
+The chosen application target (pedestrian shade-seeking as a function of temperature) is attractive for this study precisely because it is tractable and highly intuitive. Individuals demonstrably avoid solar exposure, seek shade, and adjust routes in response to thermal stress (\cite{lee2020exploring,melnikov2022behavioural}). Additionally, the behavior is visible in a single SVI frame and the environmental driver (temperature) is independently measurable. If SVI could cleanly recover even this, it would be encouraging for the broader program. Quantifying shade-seeking preference as a function of temperature could be used to improve built environment feedback control (e.g., dynamic shading, green infrastructure deployment \cite{klemm2015street}). For example, an adaptive shading system deployed in a park could use thermal sensing in combination with sparse pedestrian monitoring---rather than privacy invasive continuous monitoring---once the population-level shade preference response has been identified.
+
+Existing methods for measuring shade-seeking behavior such as controlled experiments (\cite{Zhao2023TheEO}), microclimate simulations (\cite{Ma2020PerformanceOD,Sedki2024OptimizingOT}), and field surveys (\cite{ma2023influence,dzyuban2022evidence}) are either not generalizable to real urban environments, costly, or spatially limited. SVI-based approaches could complement these by providing behavioral observations across a city (\cite{haddad2021using,elrod2025street}), but will require validated bias correction methods.
+
+
+
+\subsection{Contributions}
+
+We demonstrate the challenges of modeling shade-seeking behavior as a function of temperature, as well as the selection effects that bias the SVI corpora.
+More specifically: 
+
+\begin{itemize}[leftmargin=*]
+\item We reframe SVI-based human sensing as a selection bias problem and argue that for behavioral targets, the dominant uncertainty is the bias-correction choices.
+\item We identify the application-specific SVI bias sources that arise when the measured quantity is a human behavior, building on the general framework of \cite{elrod2026towards}.
+\item We propose application-specific correction approaches for each bias source and assemble them into an end-to-end pipeline.
+\item Using Seattle, WA as a target, we quantify the resulting estimate's sensitivity to correction choices.
+\item Based on our experience developing the bias correction pipeline, we elucidate forward-looking next steps for the community to enable more accurate SVI-based behavioral assessments. 
+\end{itemize}
+
+ \section{Methodology}
+  \label{section:Methodology}
+
+  \subsection{Problem Formulation}
+  \label{subsec:problem_formulation}
+
+  The goal of this study is to estimate pedestrian shade-seeking preference as a function of ambient thermal conditions. We frame
+  this as estimating the response function:
+  \begin{equation}
+  f(T) = P(\text{Seek Shade} = 1 \mid \text{Walk Outside}, T),
+  \label{eq:goal}
+  \end{equation}
+  where $T$ is the ambient thermal condition (expressed as the Universal Thermal Climate Index, UTCI) and the conditional probability
+   is defined over the full population of individuals \emph{if they were to walk outside} at temperature $T$. This distinction is
+  critical: at $T = -10^{\circ}$C, only cold-tolerant individuals choose to walk, but $f(T)$ should reflect the shade preference of
+  the general population were they (counterfactually) to walk at that temperature.
+
+  \subsubsection{Statistical formulation.} Let $Y_{i,j,k} \in \{0,1\}$ denote the observed shade-seeking behavior of pedestrian $k$ in street
+  view image $i$ captured at temperature bin $j$, where $Y_{i,j,k} = 1$ if the pedestrian is located in shade and $Y_{i,j,k} = 0$ if in
+  sun. Let $m_{i,j}$ denote the total number of pedestrians detected in image $i$ at temperature bin $j$, and let $\mathcal{I}_j$
+  denote the set of all images captured when ambient conditions fall within temperature bin $j$. The target parameter $f(T_j)$
+  represents the population mean shade-seeking probability across all individuals if they were to walk outside at temperature $T_j$:
+  \begin{equation}
+  f(T_j) = \mathbb{E}[Y_{i,j,k} \mid \text{Walk Outside at } T_j].
+  \label{eq:estimand}
+  \end{equation}
+
+  We do not observe $f(T_j)$ directly. Instead, we observe pedestrians who (1) chose to walk outside at temperature $T_j$, (2) were
+  located on streets captured by SVI contributors, and (3) were visible and detectable in the resulting images. Formally, our
+  observations come from the conditional distribution:
+  \begin{equation}
+  P(Y_{i,j,k} = 1 \mid \text{Chose to Walk at } T_j, \text{Captured in SVI}).
+  \label{eq:observed}
+  \end{equation}
+
+  The observational unit is the individual pedestrian, but the sampling unit is the street view image. Each image $i$ contributes
+  $m_{i,j}$ observations. A naive estimator, $\hat{f}_{\text{naive}}(T_j)$, would pool all observed pedestrians at temperature $T_j$:
+  \begin{equation}
+  \hat{f}_{\text{naive}}(T_j) = \frac{\sum_{i \in \mathcal{I}_j} n_{\text{shade},i,j}}{\sum_{i \in \mathcal{I}_j} m_{i,j}},
+  \label{eq:naive}
+  \end{equation}
+  where $n_{\text{shade},i,j} = \sum_{k=1}^{m_{i,j}} Y_{i,j,k}$ is the number of pedestrians in shade in image $i$.
+
+  \subsubsection{Why naive estimation fails.} Even with ideal image-level processing, $\hat{f}_{\text{naive}}(T_j)$ would not yield a
+  reliable estimate of Equation~\eqref{eq:goal} due to systematic biases in who is captured in imagery and in who is walking outside
+  at a given temperature. Following \citet{elrod2026towards}, these biases differ in origin: how the SVI corpus is distributed in
+  space and time (point-of-capture bias); how the focal points of images are distributed (orientation bias); how the behavioral
+  question is mapped onto image content (application-specific bias); and which image analysis tool is used (analysis-tool bias). This
+   work focuses on application-specific biases that arise when the measured quantity is a human behavior.
+
+  The remainder of this section proceeds in sequence: stating the assumptions under which Equation~\eqref{eq:goal}
+  would be identifiable (Section~\ref{subsec:assumptions}); the data sources used to build per-image records
+  (Section~\ref{subsec:dataset}); the computer-vision pipeline that extracts sun/shade occupancy signals
+  (Section~\ref{subsec:image_analysis}); and the correction procedure that adjusts raw image-level estimates to account for selection
+   biases (Section~\ref{sec:bias_correction_methods}).
+
+  \subsection{Assumptions}
+  \label{subsec:assumptions}
+
+  Estimating $f(T_j)$ from SVI requires identifying assumptions to bridge the gap between what we observe
+  (Equation~\eqref{eq:observed}) and what we seek to estimate (Equation~\eqref{eq:estimand}). We require:
+
+  \begin{enumerate}[leftmargin=*,itemsep=2pt]
+  \item \textbf{Population homogeneity:} Shade preference is approximately homogeneous across Seattle's population. This is a strong
+  but reasonable assumption given that adaptation to heat is largely a city-level phenomenon driven by local climate
+  \citep{Bobb2014HeatRelated}.
+
+  \item \textbf{Instantaneous choice:} A pedestrian's position in an image reflects an instantaneous microclimate choice at the time
+  of capture, not a long-term trajectory or pre-planned route.
+
+  \item \textbf{Bias correction validity:} The inverse probability weights and outcome adjustments described in
+  Section~\ref{sec:bias_correction_methods} adequately correct for systematic differences between observed and target populations.
+  \end{enumerate}
+
+  Violating these assumptions (particularly population heterogeneity and the instantaneous choice assumption) represent
+  potential sources of uncontrolled bias. The ablation analysis (Table ~\ref{tab:ablation}) quantifies sensitivity to correction
+  choices but cannot directly validate these identifying assumptions.
+
+  \subsection{Dataset}
+  \label{subsec:dataset}
+
+  We construct per-image records from four complementary sources, each contributing variables needed to estimate $f(T_j)$ and apply
+  bias corrections. The full pipeline is shown in Figure~\ref{fig:dataset_pipeline_shade}. See Section~\ref{sec:replication} for
+  implementation details.
+
+  \begin{figure*}
+  \centering
+  \includegraphics[width=0.8\linewidth]{figur/Figure1.png}
+  \caption{Data processing pipeline from raw sources to binned shade preference estimates. $T_a$ is 2-$m$ air temperature, $T_d$ is 2-$m$
+   dew point temperature, $V_a$ is wind speed at 10 $m$. The thermofeel library computes UTCI from meteorological inputs. For shade
+  geometry: $L$ is distance from a tree or building, $h$ is height, $\alpha$ is angle from road segment center. $\lambda(T)$ is the
+  walk rate (proportion of trips relative to the population size taken on foot) as a function of UTCI. Image-level outputs: inshade\_count is the count of
+  pedestrians in shade, outshade\_count is the count in sun,  shade\_ratio is the shadow ratio (fraction of walkable area in shade), and dist\_to\_shade is distance to the nearest shade boundary.}
+  \label{fig:dataset_pipeline_shade}
+  \end{figure*}
+
+%  \begin{description}[leftmargin=0pt,itemsep=2pt,parsep=0pt]
+    \subsubsection{Street view imagery.} Open-source images from Mapillary\footnote{\url{https://www.mapillary.com/}}, selected
+  within municipal boundaries via OpenStreetMap\footnote{\url{https://www.openstreetmap.org}}. Mapillary's open license permits free
+  access and facilitates reproducibility.
+
+    \subsubsection{Shade availability.} Computed geometrically from OpenStreetMap building footprints and tree locations, projected
+  along solar azimuth from image timestamps. Building heights default to 12~$m$ when tags are absent; tree crown radius defaults to
+  3.5~$m$. For each image $i$, we compute $s_{i,j}$ (shadow ratio: fraction of road segment in shade) and $d_{i,j}$ (distance in meters
+  from image capture point to nearest shadow boundary).
+
+    \subsubsection{Thermal conditions.} UTCI~\citep{Brde2012DerivingTO} computed from ERA5 reanalysis data~\citep{hersbach2020era5}
+  via Open-Meteo API\footnote{\url{https://open-meteo.com/}} using thermofeel~\citep{Brimicombe2022ThermofeelAP}. Each image is
+  assigned to a 2°C temperature bin $j$ based on UTCI at capture time.
+
+    \subsubsection{Mobility data.} Puget Sound Regional Council household travel surveys (April--June 2023, $n=56,704$ trips, 22.2\%
+  walking) annotated with UTCI provide walking mode share $\lambda(T_j)$ to correct for temperature-based self-selection bias
+  (Section~\ref{sec:bias_correction_methods}).
+%  \end{description}
+
+  \subsection{Image Analysis}
+  \label{subsec:image_analysis}
+
+  For each image $i$ at temperature bin $j$, we extract counts $n_{\text{shade},i,j}$ and $n_{\text{sun},i,j}$ via a two-stage computer vision pipeline. Model validation performance appears in Table~\ref{tab:model-performance}.
+
+  \subsubsection{Stage 1: Scene classification.}
+  Pedestrians cannot make meaningful shade-seeking choices unless sun and shade are simultaneously present and visible in the image.
+  We apply a vision transformer (ViT-B/16) trained on 1,420 labeled images to classify each scene as ``Sunny/Contrastive'' or
+  ``Non-Contrastive'' (overcast, uniformly lit, or otherwise uninformative). Only images classified as contrastive proceed to Stage
+  2.
+
+  \subsubsection{Stage 2: Pedestrian detection and attribution.}
+  For contrastive scenes, we apply YOLO11x to detect pedestrians and classify each as in sun or shade. The model was trained on 555
+  hand-annotated images from the sunny subset. For each image $i$, the detector produces $n_{\text{shade},i,j}$ (count of pedestrians
+  in shade) and $n_{\text{sun},i,j}$ (count in sun), yielding $m_{i,j} = n_{\text{shade},i,j} + n_{\text{sun},i,j}$ total observations of
+   $Y_{i,j,k}$.
+
+
+  \begin{table}[t!]
+  \centering
+  \caption{Model validation performance.}
+  \label{tab:model-performance}
+  \small
+  \begin{tabular}{@{}llcccc@{}}
+  \toprule
+  Model & Task & Precision & Recall & F1/mAP & $n$ \\
+  \midrule
+  \multicolumn{6}{@{}l}{\itshape Binary classification}\\
+  ViT-B/16 & Sunny/cloudy & 1.000 & 0.969 & 0.984 & 284 \\[0.3em]
+  \multicolumn{6}{@{}l}{\itshape Object detection}\\
+  YOLO11x & Person/shade & 0.848 & 0.714 & 0.796$^{a}$ & 166 \\
+  \bottomrule
+  \end{tabular}
+  \\[0.3em]
+  {\footnotesize $^{a}$\,mAP @ IoU $=0.5$, where IoU denotes intersection over union and mAP denotes mean average precision.}
+  \end{table}
+
+  \subsection{Bias Correction Methods}
+  \label{sec:bias_correction_methods}
+
+  With per-image counts $n_{\text{shade},i,j}$ and $n_{\text{sun},i,j}$ in hand, we apply three corrections to move from the naive
+  estimator (Equation~\eqref{eq:naive}) to a bias-corrected estimate of $f(T_j)$. Each correction addresses a distinct source of
+  bias.
+
+  \subsubsection{Shadow availability correction (SR-IPW).}
+  If a street has little shade available, observing a pedestrian in sun is uninformative about preference---shade may simply be
+  unavailable. We exclude images with shadow ratio $s_{i,j} < 0.05$ or $s_{i,j} > 0.95$ (cases where meaningful choice is impossible)
+  and correct the remainder via inverse probability weighting \citep{Rosenbaum1983Central}. We tested caps from the 90th to 99th percentile; final estimates varied by less than 4 percentage points (Table \ref{tab:sensitivity-winsorization}).
+
+  For each retained image $i$ at temperature bin $j$, the shadow ratio inverse probability weight is:
+  \begin{equation}
+  w_{\text{SR},i,j} = \frac{\min(1/s_{i,j}, c_{95})}{\frac{1}{|\mathcal{I}_j|}\sum_{i' \in \mathcal{I}_j} \min(1/s_{i'j}, c_{95})},
+  \end{equation}
+  where $c_{95}$ is the 95th percentile of $\{1/s_{ij} : i \in \mathcal{I}_j, s_{ij} \geq 0.05\}$ (winsorization cap) and
+  $|\mathcal{I}_j|$ is the number of retained images in bin $j$. This weight up-weights observations from low-shade streets
+  (under-sampled due to photographer preference for tree-canopied streets) and down-weights high-shade streets. Mean-scaling to 1.0
+  stabilizes variance and preserves effective sample size.
+
+  \subsubsection{Temperature-based selection correction (Temp-IPW).}
+  The population of pedestrians observed at different temperatures is not constant: extreme temperatures suppress outdoor walking. If
+   individuals who avoid walking at temperature $T_j$ have different shade preferences than those who walk, this induces selection
+  bias. We correct this using walking mode share $\lambda(T_j)$ derived from Puget Sound household travel surveys, binned by 2°C
+  UTCI intervals.
+
+  For each image $i$ at temperature $T_j$, we apply an asymmetric inverse probability weight:
+  \begin{equation}
+  w_{\text{temp},i,j} =
+  \begin{cases}
+  \frac{\lambda(T_j)}{\lambda(T_{\text{baseline}})}, & T_j < T_{\text{baseline}} \\[6pt]
+  \frac{\lambda(T_{\text{baseline}})}{\lambda(T_j)}, & T_j \geq T_{\text{baseline}}
+  \end{cases}
+  \end{equation}
+  where $T_{\text{baseline}} = 20^{\circ}$C (neutral thermal comfort). This weight down-weights cold-weather observations (cold-hardy
+   walkers are non-representative of the general population) and up-weights hot-weather observations (heat-tolerant walkers may
+  prefer more shade than the general population). Walk rates are clipped at a minimum of 0.1 to prevent extreme weights. This threshold has no effect in Seattle (all bins exceed 19\% walking rate) but prevents extreme leverage in cities with more extreme temperature ranges.
+
+  \subsubsection{Distance-conditioned walk preference (DCWP).}
+  A pedestrian in sun near a shade boundary may simply not yet have crossed into shade. We   apply a distance-conditioned outcome adjustment based on revealed preference theory \citep{Samuelson1948Revealed}.
+
+  For each image $i$ at temperature bin $j$, let $d_{ij}$ denote the distance (in meters) from the image capture point to the nearest
+   shadow boundary. The DCWP-adjusted shade preference is:
+  \begin{equation}
+  p_{\text{shade},i,j} = \frac{n_{\text{shade},i,j}}{n_{\text{shade},i,j} + n_{\text{sun},i,j} \cdot \exp(-d_{i,j}/\tau)},
+  \label{eq:dcwp}
+  \end{equation}
+  where $\tau = 20$ $m$ is a detour decay constant determined from prior shade choice literature \citep{lee2020exploring}. This
+  exponentially down-weights sun-standing observations by distance from shade: if shade is nearby ($d_{i,j}$ small), sun-standing is
+  more likely an active choice, whereas if shade is far ($d_{i,j}$ large), pedestrians may not have been willing to incur the detour
+  cost. Note that DCWP is an \emph{outcome adjustment} (modifying $p_{\text{shade},i,j}$), not a weight. Varying $\tau$ from 5 to 50 meters changes the DCWP correction by 1.6 percentage points (Table \ref{tab:sensitivity-tau}).
+
+  \subsubsection{Combined bias-corrected estimator.}
+  The three corrections combine through multiplicative weighting (SR-IPW and Temp-IPW) and outcome adjustment (DCWP). The final
+  estimator for temperature bin $j$ is:
+  \begin{equation}
+  \hat{f}(T_j) = \frac{\sum_{i \in \mathcal{I}_j} p_{\text{shade},i,j} \cdot w_{\text{SR},i,j} \cdot w_{\text{temp},i,j} \cdot
+  m_{i,j}}{\sum_{i \in \mathcal{I}_j} w_{\text{SR},i,j} \cdot w_{\text{temp},i,j} \cdot m_{i,j}},
+  \label{eq:corrected}
+  \end{equation}
+  where $m_{i,j} = n_{\text{shade},i,j} + n_{\text{sun},i,j}$ is the total number of pedestrians in image $i$. Weighting by $m_{i,j}$
+  ensures that images contribute information proportional to the number of independent shade-seeking observations. This estimator
+  combines all three corrections: the DCWP-adjusted outcome $p_{\text{shade},i,j}$ (Equation~\eqref{eq:dcwp}) accounts for spatial
+  access costs, while the product $w_{\text{SR},i,j} \cdot w_{\text{temp},i,j}$ reweights observations to correct for shadow
+  availability bias and temperature-based selection into the walking population.
+ \begin{figure*}
+  \centering
+  \includegraphics[width=0.8\linewidth]{figur/Figure2.png}
+  \caption{Shade preference estimates across temperature range with progressive bias corrections. Each curve shows the effect of adding corrections: raw (unadjusted), temperature selection adjustment, shadow ratio IPW (SR-IPW), and detour cost weighting (DCWP). Error bars show 95\% bootstrap confidence intervals. Point estimates are horizontally offset by ±0.4°C for visibility; all estimates represent the labeled UTCI temperature bin (2°C intervals).}
+  \label{fig:seattle-binned}
+  \end{figure*}
+
+%trimmed ver
+\section{Results of our probe}
+  \label{sec:results}
+
+  Table~\ref{tab:ablation} reports the marginal effect of each
+  correction on mean shade preference for Seattle (51,243 images,
+  UTCI $-17$ to $33^{\circ}\text{C}$). The aggregate estimate moves
+  from 0.657 (raw) to 0.501 (fully adjusted)---a 16 percentage point (pp)
+  change driven almost entirely by correction choices rather than
+  behavioral differences. Shadow availability correction (SR-IPW)
+  accounts for 70\% of total adjustment, with detour cost (DCWP)
+  reversing 39\% of the SR-IPW effect ($\tau = 20$ $m$). Temperature
+  selection has minimal impact as walk rates vary narrowly
+  (19.1--35.0\%).
+
+  An analyst who skipped SR-IPW would report a
+  number 24 points higher than one who applied it, with no
+  behavioral difference. Although naive SVI analysis is
+  unreasonable, any permutation of corrections could be plausible at first glance, highlighting the need for validated guidance on SVI
+  bias correction methods.
+
+  Figure~\ref{fig:seattle-binned} shows how $f(T)$ estimates change
+  as corrections accumulate. We lack validation data to interpret
+  the curve shape--SVI has unprecedented scale for measuring behavioral responses, making suitable data validation challenging, but note the high-UTCI region above $27^{\circ}$C
+   where prior work identified increased shade
+  preference ~\citep{lee2020exploring, melnikov2022behavioural}.
+
+  \begin{table}[t!]
+    \centering
+    \caption{Ablation analysis of bias corrections on shade
+  preference estimates.}
+    \label{tab:ablation}
+    \small
+    \begin{tabular}{@{}lcc@{}}
+    \toprule
+    \textbf{Corrections Applied} & \textbf{Mean
+  $\hat{p}_{\text{shade}}$} & \textbf{$\Delta$ (pp)} \\
+    \midrule
+    None (raw)                     & 0.657 & ---   \\
+    Temperature selection          & 0.649 & -0.7  \\
+    Shadow ratio (SR-IPW)          & 0.405 & -24.4  \\
+    Detour cost (DCWP)             & 0.501 & +9.6  \\
+    \bottomrule
+    \end{tabular}
+    \vspace{2pt}
+    \parbox{0.9\linewidth}{\footnotesize
+    \textit{Note:} $\Delta$ relative to preceding row (in pp).
+    }
+  \end{table}
+\section{Parameter Sensitivity}
+We tested robustness to methodological parameters. Winsorization caps (90th, 95th, 99th percentile) yield final estimates of 52.5\%, 50.1\%, and 48.5\% respectively---a 4.0 percentage point range with overlapping confidence intervals (Table \ref{tab:sensitivity-winsorization}). Detour decay parameters $\tau \in [5, 50]$ meters produce DCWP corrections varying by only 1.6~pp (3.5--5.1~pp), while shadow ratio correction remains constant at $-24.4$~pp (Table \ref{tab:sensitivity-tau}). Walk rate clipping at $\lambda_{\text{min}} = 0.1$ has zero effect on Seattle data. All sensitivity analyses demonstrate that bias correction choices shift estimates by 13--17 percentage points regardless of specific parameter values.
+\begin{table}[t!]
+\centering
+\caption{Sensitivity to winsorization threshold in shadow ratio inverse probability weighting.}
+\label{tab:sensitivity-winsorization}
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Percentile} & \textbf{Raw} & \textbf{+Temp} & \textbf{+SR-IPW} & \textbf{+DCWP} \\
+\midrule
+90th & 0.657 & 0.649 & 0.433 & 0.525 \\
+95th & 0.657 & 0.649 & 0.405 & 0.501 \\
+99th & 0.657 & 0.649 & 0.388 & 0.485 \\
+\bottomrule
+\end{tabular}
+\vspace{2pt}
+\parbox{0.9\linewidth}{\footnotesize
+\textit{Note:} Final estimates vary by less than 0.3 percentage points across winsorization thresholds (90th, 95th, 99th percentile), demonstrating robustness of the bias correction approach to this methodological choice.
+}
+\end{table}
+
+\begin{table}[t!]
+\centering
+\caption{Sensitivity to detour decay parameter $\tau$ in DCWP adjustment.}
+\label{tab:sensitivity-tau}
+\small
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+$\tau$ (m) & Raw & +Temp & +SR-IPW & +DCWP & $\Delta_{\text{SR}}$ (pp) & $\Delta_{\text{DCWP}}$ (pp) \\
+\midrule
+ 5 & 0.657 & 0.649 & 0.405 & 0.440 & -24.4 & +3.5 \\
+10 & 0.657 & 0.649 & 0.405 & 0.448 & -24.4 & +4.3 \\
+15 & 0.657 & 0.649 & 0.405 & 0.451 & -24.4 & +4.6 \\
+20 & 0.657 & 0.649 & 0.405 & 0.453 & -24.4 & +4.7 \\
+30 & 0.657 & 0.649 & 0.405 & 0.455 & -24.4 & +4.9 \\
+40 & 0.657 & 0.649 & 0.405 & 0.456 & -24.4 & +5.0 \\
+50 & 0.657 & 0.649 & 0.405 & 0.456 & -24.4 & +5.1 \\
+\bottomrule
+\end{tabular}
+\vspace{2pt}
+\parbox{0.9\linewidth}{\footnotesize
+\textit{Note:} DCWP correction magnitude varies with $\tau$, but the shadow ratio correction (SR-IPW) dominates in all cases. Total correction ranges from -21.6 to -20.0 percentage points across tested values of $\tau \in [5, 50]$ meters.
+}
+\end{table}
+ 
+  \section{Conclusion}
+  \label{sec:Conclusion}
+
+  This case study explores challenges in measuring human behavior
+  from SVI. Three critical gaps emerged:
+
+  \subsubsection{Pedestrian mode choice data.} Street view captures a
+  non-random pedestrian sample. This study assumed population
+  homogeneity, but future studies targeting behaviors varying across subpopulations
+   will require data on how the distribution of pedestrians shifts over space and time---data that is broadly unavailable. Seattle was viable as a study area only because it had pedestrian mode choice data at sufficient resolution to permit UTCI annotation. 
+
+  \subsubsection{Image validation data.} Prior SVI studies have
+  not identified what kind of validation data is needed for bias correction.
+  We suggest that large-scale urban camera deployments could provide reference
+  distributions to assess how well SVI sampling approximates
+  real-world behavior. 
+
+  \subsubsection{Corrections dominating signal.} Bias corrections can
+  dominate behavioral response—our measures are sensitive to small
+  changes in problem formulation. Naively analyzing SVI without correction
+  \textit{is itself a bias correction choice} likely to strongly affect
+  results. Until validated correction methods exist, strong
+  behavioral claims from SVI are irresponsible.
+
+
+\subsection{The Future of SVI for CPHS}
+Our approach of localizing pedestrians relative to urban features to measure preference generalizes beyond shade-seeking. Combined with computer-vision annotation of individual attributes (e.g., phone use, social interaction, mood), SVI could measure a wide range of urban behaviors as functions of the environment. Although too infrequent for feedback control, these measurements offer low-cost, near-globally scalable system identification before embedded deployment. They could also indicate whether an urban CPHS will transfer across cities, since similar behavioral response functions suggest a controller for one city will work in another. With better uncertainty quantification, they could guide sensor placement toward areas where SVI-derived estimates are most variable.
+
+Realizing this requires methodological progress in three areas. The first is formal sensitivity bounds on the unmeasured confounding needed to nullify our findings. The second is theoretical guarantees for IPW estimators under SVI sampling. The third is validation infrastructure. We propose fixed-camera studies but alternatives such as aggregated mobility data from transportation authorities, synthetic pedestrian simulations with known behavioral parameters, and controlled field experiments in limited areas could be effective. Until such validation exists, SVI-derived behavioral parameters cannot be trusted for CPHS identification. We hope the CPHS community takes up SVI bias correction as a step toward that goal.
+
+
+\subsection{Replication}
+\label{sec:replication}
+The code will be available at [redacted for peer review]. Instructions for collecting data from open source providers will be included in the replication codebase. Raw analyzed data is available upon reasonable request.
+
+\section*{DECLARATION OF GENERATIVE AI AND AI-ASSISTED TECHNOLOGIES IN THE WRITING PROCESS}
+During the preparation of this work the author(s) used Anthropic's Claude and Google's Gemini models to research relevant work, rework drafts, and provide space saving edit recommendations. After using this tool/service, the authors reviewed and edited the content as needed and take full responsibility for the content of the publication.
+
+
+
+\bibliographystyle{ifacconf}
+\bibliography{reference.bib}
+\end{document}
